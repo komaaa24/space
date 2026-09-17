@@ -82,7 +82,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <header className="bg-white border-b border-line">
         <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center gap-4">
           <Link href="/admin" className="flex items-center gap-2.5 shrink-0">
-            <LogoMark className="w-10 h-10" />
+            <LogoMark className="w-11 h-11" />
             <span className="font-extrabold text-[17px] tracking-tight">
               chatspace
             </span>

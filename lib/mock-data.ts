@@ -214,9 +214,9 @@ export const integrationCatalog = [
 ];
 
 export const tariffs = [
-  { id: "free", name: "FREE", price: "0", yearlyPrice: "0", period: "oy", features: ["Instagram Automation: 200 dialog/oy", "AI Agent yopiq", "Katalog yopiq", "Avtojavob yopiq"], current: false },
-  { id: "pro", name: "PRO", price: "75 000", yearlyPrice: "50 000", period: "oy", features: ["Instagram Automation cheksiz", "Yillik to'lovda -33%", "AI Agent yopiq", "Katalog yopiq", "Avtojavob yopiq"], current: true },
-  { id: "vip", name: "VIP", price: "300 000", yearlyPrice: "225 000", period: "oy", features: ["Instagram Automation cheksiz", "AI Agent ochiq", "Katalog ochiq", "Avtojavob ochiq", "Yillik to'lovda -25%"], current: false },
+  { id: "free", name: "FREE", price: "0", yearlyPrice: "0", period: "oy", features: ["Instagram Automation: 200 dialog/oy", "AI Agent yopiq", "Katalog yopiq"], current: false },
+  { id: "pro", name: "PRO", price: "75 000", yearlyPrice: "50 000", period: "oy", features: ["Instagram Automation cheksiz", "Yillik to'lovda -33%", "AI Agent yopiq", "Katalog yopiq"], current: true },
+  { id: "vip", name: "VIP", price: "300 000", yearlyPrice: "225 000", period: "oy", features: ["Instagram Automation cheksiz", "AI Agent ochiq", "Katalog ochiq", "Yillik to'lovda -25%"], current: false },
 ];
 
 export interface Product {

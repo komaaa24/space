@@ -4,7 +4,6 @@ import {
   BarChart3,
   Users,
   BookOpen,
-  Check,
   ArrowRight,
   Send,
   ShieldAlert,
@@ -12,8 +11,9 @@ import {
 } from "lucide-react";
 import { Instagram, Youtube } from "@/components/brand-icons";
 import { DemoForm } from "@/components/landing/demo-form";
+import { HeroChatDemo } from "@/components/landing/hero-chat-demo";
+import { PricingSection } from "@/components/landing/pricing-section";
 import { LogoMark } from "@/components/logo";
-import { tariffs } from "@/lib/mock-data";
 
 const steps = [
   {
@@ -38,10 +38,10 @@ export default function Landing() {
     <div className="bg-white text-[#0b1226]">
       {/* Nav */}
       <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-lg border-b border-line">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <LogoMark className="w-10 h-10" />
-            <span className="font-extrabold text-lg tracking-tight">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <LogoMark className="w-14 h-14" />
+            <span className="font-extrabold text-2xl tracking-tight">
               chatspace
             </span>
           </div>
@@ -116,65 +116,7 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Hero visual — chat + lead card stack */}
-          <div className="relative">
-            <div className="rounded-3xl bg-navy-900 p-6 text-white relative overflow-hidden">
-              <div className="absolute inset-0 dot-grid opacity-10" />
-              <div className="relative">
-                <div className="flex items-center gap-3 pb-4 border-b border-white/10">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 to-amber-400" />
-                  <div>
-                    <div className="text-sm font-bold">@mijoz_akkaunti</div>
-                    <div className="text-[11px] text-slate-400">
-                      Instagram Direct
-                    </div>
-                  </div>
-                  <span className="ml-auto flex items-center gap-1.5 text-[11px] bg-electric-500/20 text-electric-300 font-semibold px-2.5 py-1 rounded-full">
-                    <Bot className="w-3 h-3" /> AI onlayn
-                  </span>
-                </div>
-                <div className="py-5 space-y-3 text-sm">
-                  <div className="flex">
-                    <div className="bg-white/10 rounded-2xl rounded-bl-md px-4 py-2.5 max-w-[80%]">
-                      Assalomu alaykum, narxi qancha? Yetkazib berish bormi?
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <div className="electric-gradient rounded-2xl rounded-br-md px-4 py-2.5 max-w-[80%]">
-                      Vaalaykum assalom! 😊 280 000 so'm, Toshkent bo'ylab
-                      bepul yetkazamiz. Raqamingizni qoldirasizmi?
-                    </div>
-                  </div>
-                  <div className="flex">
-                    <div className="bg-white/10 rounded-2xl rounded-bl-md px-4 py-2.5">
-                      +998 90 123 45 67
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Floating lead card */}
-            <div className="absolute -bottom-6 -left-6 rounded-2xl bg-white border border-line shadow-xl shadow-electric-500/10 p-4 flex items-center gap-3">
-              <span className="w-10 h-10 rounded-xl bg-electric-50 flex items-center justify-center">
-                <Users className="w-5 h-5 text-electric-600" />
-              </span>
-              <div>
-                <div className="text-[13px] font-bold flex items-center gap-1.5">
-                  Yangi lead saqlandi
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                </div>
-                <div className="text-[11px] text-slate-400">
-                  +998 90 123 45 67 · 5 soniyada
-                </div>
-              </div>
-            </div>
-            <div className="absolute -top-5 -right-4 rounded-2xl bg-white border border-line shadow-xl shadow-electric-500/10 px-4 py-3">
-              <div className="text-[11px] text-slate-400">Javob vaqti</div>
-              <div className="text-lg font-extrabold text-electric-600">
-                4 soniya ⚡
-              </div>
-            </div>
-          </div>
+          <HeroChatDemo />
         </div>
       </section>
 
@@ -309,77 +251,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl md:text-[40px] font-extrabold tracking-tight text-center">
-            Tariflar
-          </h2>
-          <p className="text-slate-500 text-center mt-4">
-            Biznesingiz hajmiga mos rejani tanlang
-          </p>
-          <div className="grid md:grid-cols-3 gap-5 mt-14 items-start">
-            {tariffs.map((t) => (
-              <div
-                key={t.id}
-                className={`rounded-3xl p-8 ${
-                  t.current
-                    ? "bg-navy-900 text-white relative overflow-hidden"
-                    : "bg-white border border-line"
-                }`}
-              >
-                {t.current && (
-                  <>
-                    <div className="absolute inset-0 dot-grid opacity-10" />
-                    <span className="absolute top-6 right-6 electric-gradient text-white text-[11px] font-bold px-3 py-1 rounded-full">
-                      Ommabop
-                    </span>
-                  </>
-                )}
-                <div className="relative">
-                  <h3 className="font-extrabold text-lg">{t.name}</h3>
-                  <div className="mt-3 flex items-baseline gap-1">
-                    <span className="text-[32px] font-extrabold tracking-tight">
-                      {t.price}
-                    </span>
-                    <span
-                      className={`text-sm ${t.current ? "text-slate-400" : "text-slate-400"}`}
-                    >
-                      so'm/{t.period}
-                    </span>
-                  </div>
-                  <ul className="mt-7 space-y-3">
-                    {t.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5 text-sm">
-                        <span
-                          className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
-                            t.current ? "bg-electric-500/30" : "bg-electric-50"
-                          }`}
-                        >
-                          <Check
-                            className={`w-3 h-3 ${t.current ? "text-cyan-300" : "text-electric-600"}`}
-                          />
-                        </span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <a
-                    href="#cta"
-                    className={`mt-8 block text-center font-bold py-3.5 rounded-2xl text-sm transition-colors ${
-                      t.current
-                        ? "bg-electric-500 hover:bg-electric-600 text-white"
-                        : "border border-line hover:border-electric-300"
-                    }`}
-                  >
-                    Tanlash
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <PricingSection />
 
       {/* CTA */}
       <section id="cta" className="pb-24">

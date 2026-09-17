@@ -44,7 +44,7 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
       <header className="bg-navy-900 text-white">
         <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center gap-4">
           <Link href="/owner" className="flex items-center gap-2.5 shrink-0">
-            <LogoMark className="w-10 h-10" variant="white" />
+            <LogoMark className="w-11 h-11" variant="white" />
             <span className="font-extrabold text-[17px] tracking-tight">
               chatspace
             </span>
