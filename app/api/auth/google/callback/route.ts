@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
 
@@ -12,14 +14,21 @@ interface GoogleTokenResponse {
 interface GoogleUserInfo {
   email?: string;
   email_verified?: boolean;
+  name?: string;
+}
+
+function getBaseUrl(req: Request) {
+  const url = new URL(req.url);
+  return process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || url.origin;
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const baseUrl = getBaseUrl(req);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
-  const loginUrl = new URL("/login", url.origin);
+  const loginUrl = new URL("/login", baseUrl);
 
   if (error) {
     loginUrl.searchParams.set("error", "google_cancelled");
@@ -75,10 +84,26 @@ export async function GET(req: Request) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  let user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    loginUrl.searchParams.set("error", "google_user_not_found");
-    return NextResponse.redirect(loginUrl);
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
+    const company =
+      profile.name?.trim() || email.split("@")[0] || "Google foydalanuvchi";
+
+    user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: "CLIENT_ADMIN",
+        client: {
+          create: {
+            company,
+            plan: "FREE",
+            status: "TRIAL",
+          },
+        },
+      },
+    });
   }
 
   const token = await createSessionToken({
@@ -90,7 +115,7 @@ export async function GET(req: Request) {
   await setSessionCookie(token);
 
   const res = NextResponse.redirect(
-    new URL(user.role === "OWNER" ? "/owner" : "/admin", url.origin),
+    new URL(user.role === "OWNER" ? "/owner" : "/admin", baseUrl),
   );
   res.cookies.delete("google_oauth_state");
   res.cookies.delete("google_oauth_redirect_uri");
