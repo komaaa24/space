@@ -3,10 +3,7 @@ import { NextResponse } from "next/server";
 
 function getRedirectUri(req: Request) {
   const url = new URL(req.url);
-  const isLocal = url.hostname === "127.0.0.1" || url.hostname === "localhost";
-  const baseUrl = isLocal
-    ? url.origin
-    : process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || url.origin;
+  const baseUrl = process.env.APP_BASE_URL || process.env.RENDER_EXTERNAL_URL || url.origin;
 
   return `${baseUrl}/api/auth/google/callback`;
 }
