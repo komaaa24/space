@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fafbff;
+  --foreground: #0b1226;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@theme {
+  /* Elektr ko'k palitra */
+  --color-electric-50: #eef4ff;
+  --color-electric-100: #dbe7ff;
+  --color-electric-200: #b8d0ff;
+  --color-electric-300: #85adff;
+  --color-electric-400: #4d82ff;
+  --color-electric-500: #0f5eff;
+  --color-electric-600: #0047e5;
+  --color-electric-700: #0038b8;
+  --color-electric-800: #062e8c;
+  --color-electric-900: #0a2463;
+
+  /* Chuqur navy — kontrast bloklar uchun */
+  --color-navy-800: #0c1330;
+  --color-navy-900: #070d24;
+
+  /* Chegara va yordamchi */
+  --color-line: #e4e9f7;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "tnum";
+}
+
+::selection {
+  background: var(--color-electric-200);
+}
+
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #ccd6ee;
+  border-radius: 3px;
+}
+
+/* Elektr gradient — hero kartalar va CTA uchun */
+.electric-gradient {
+  background: linear-gradient(120deg, #0038b8 0%, #0f5eff 55%, #00c2ff 130%);
+}
+.electric-text-gradient {
+  background: linear-gradient(100deg, #0f5eff 20%, #00c2ff 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Nuqtali to'r — bo'sh joylar uchun bezak */
+.dot-grid {
+  background-image: radial-gradient(circle, #c7d4f2 1px, transparent 1px);
+  background-size: 22px 22px;
+}
