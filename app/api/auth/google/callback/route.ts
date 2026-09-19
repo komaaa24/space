@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
+import { getClientIp } from "@/lib/security";
 
 interface GoogleTokenResponse {
   access_token?: string;
@@ -85,6 +86,10 @@ export async function GET(req: Request) {
   }
 
   let user = await prisma.user.findUnique({ where: { email } });
+  const loginAudit = {
+    lastLoginAt: new Date(),
+    lastLoginIp: getClientIp(req),
+  };
   if (!user) {
     if (process.env.GOOGLE_AUTO_PROVISION !== "true") {
       loginUrl.searchParams.set("error", "google_user_not_found");
@@ -100,6 +105,8 @@ export async function GET(req: Request) {
         email,
         passwordHash,
         role: "CLIENT_ADMIN",
+        ...loginAudit,
+        loginCount: 1,
         client: {
           create: {
             company,
@@ -107,6 +114,14 @@ export async function GET(req: Request) {
             status: "TRIAL",
           },
         },
+      },
+    });
+  } else {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        ...loginAudit,
+        loginCount: { increment: 1 },
       },
     });
   }

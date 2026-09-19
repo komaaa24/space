@@ -82,6 +82,10 @@ model Client {
   afterHoursMode    AfterHoursMode @default(ALWAYS)
   plan              PlanTier       @default(FREE)
   status            ClientStatus   @default(TRIAL)
+  messageMonthlyLimit    Int?
+  messagePackagePrice    Int      @default(0)
+  messagePackageCurrency String   @default("USD")
+  messagePackageNote     String   @default("")
   createdAt         DateTime       @default(now())
 
   users               User[]
@@ -253,6 +257,9 @@ model User {
   passwordHash String
   role         Role
   createdAt    DateTime @default(now())
+  lastLoginAt  DateTime?
+  lastLoginIp  String?
+  loginCount   Int      @default(0)
 
   client   Client? @relation(fields: [clientId], references: [id])
   clientId String?

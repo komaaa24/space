@@ -22,8 +22,24 @@ export async function GET() {
   const clients = await prisma.client.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      users: { select: { id: true, email: true, role: true, createdAt: true } },
+      users: {
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          lastLoginAt: true,
+          lastLoginIp: true,
+          loginCount: true,
+        },
+      },
       channels: { select: { id: true, type: true, status: true, handle: true } },
+      subscriptions: {
+        where: { status: "ACTIVE", endsAt: { gt: new Date() } },
+        orderBy: { endsAt: "desc" },
+        take: 1,
+        select: { cycle: true, endsAt: true },
+      },
       _count: {
         select: {
           conversations: true,
@@ -84,16 +100,25 @@ export async function GET() {
   );
   const messagesByClient = new Map<
     string,
-    { total: number; incoming: number; outgoing: number; lastMessageAt: Date | null }
+    {
+      total: number;
+      incoming: number;
+      outgoing: number;
+      aiThisMonth: number;
+      lastMessageAt: Date | null;
+    }
   >();
   for (const message of messages) {
     const clientId = message.conversation.clientId;
     const current =
       messagesByClient.get(clientId) ??
-      { total: 0, incoming: 0, outgoing: 0, lastMessageAt: null };
+      { total: 0, incoming: 0, outgoing: 0, aiThisMonth: 0, lastMessageAt: null };
     current.total += 1;
     if (message.role === "USER") current.incoming += 1;
     else current.outgoing += 1;
+    if (message.role === "AI" && message.createdAt >= startOfMonth) {
+      current.aiThisMonth += 1;
+    }
     if (!current.lastMessageAt || message.createdAt > current.lastMessageAt) {
       current.lastMessageAt = message.createdAt;
     }
@@ -155,6 +180,19 @@ export async function GET() {
       messages: messagesByClient.get(client.id)?.total ?? 0,
       incomingMessages: messagesByClient.get(client.id)?.incoming ?? 0,
       outgoingMessages: messagesByClient.get(client.id)?.outgoing ?? 0,
+      aiMessagesThisMonth: messagesByClient.get(client.id)?.aiThisMonth ?? 0,
+      messageMonthlyLimit: client.messageMonthlyLimit,
+      messageRemaining:
+        client.messageMonthlyLimit === null
+          ? null
+          : Math.max(
+              0,
+              client.messageMonthlyLimit - (messagesByClient.get(client.id)?.aiThisMonth ?? 0),
+            ),
+      messagePackagePrice: client.messagePackagePrice,
+      messagePackageCurrency: client.messagePackageCurrency,
+      messagePackageNote: client.messagePackageNote,
+      activeSubscription: client.subscriptions[0] ?? null,
       lastMessageAt: messagesByClient.get(client.id)?.lastMessageAt ?? null,
       requests: client._count.requests,
       requestCategories:

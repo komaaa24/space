@@ -4,6 +4,11 @@ import {
   Users,
   MessagesSquare,
   ArrowUpRight,
+  KeyRound,
+  CheckCircle2,
+  ClipboardList,
+  Bot,
+  CreditCard,
 } from "lucide-react";
 import { Badge, Card, CardHeader, PageTitle, StatCard } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
@@ -18,6 +23,21 @@ const clientStatusMeta = {
 };
 
 const planLabels = { FREE: "FREE", PRO: "PRO", VIP: "VIP" };
+
+function formatDateTime(value: Date | null) {
+  if (!value) return "—";
+  return value.toLocaleString("uz-UZ", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("uz-UZ").format(value);
+}
 
 export default async function OwnerDashboard() {
   const recentLeads = await prisma.platformLead.findMany({
@@ -36,12 +56,43 @@ export default async function OwnerDashboard() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const [totalClients, activeClients, trialClients, dialogs30d, clients, dialogsThisMonthByClient] =
-    await Promise.all([
+  const [
+    totalClients,
+    activeClients,
+    trialClients,
+    dialogs30d,
+    totalUsers,
+    onlineChannels,
+    totalMessages,
+    totalRequests,
+    totalAutomations,
+    paidPayments,
+    recentLogins,
+    clients,
+    dialogsThisMonthByClient,
+  ] = await Promise.all([
       prisma.client.count(),
       prisma.client.count({ where: { status: "ACTIVE" } }),
       prisma.client.count({ where: { status: "TRIAL" } }),
       prisma.conversation.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.user.count(),
+      prisma.channel.count({ where: { status: "ONLINE" } }),
+      prisma.message.count(),
+      prisma.request.count(),
+      prisma.automation.count(),
+      prisma.payment.aggregate({
+        where: { status: "PAID" },
+        _count: true,
+        _sum: { amount: true },
+      }),
+      prisma.user.findMany({
+        where: { lastLoginAt: { not: null } },
+        orderBy: { lastLoginAt: "desc" },
+        take: 8,
+        include: {
+          client: { select: { company: true, plan: true, status: true } },
+        },
+      }),
       prisma.client.findMany({
         orderBy: { createdAt: "desc" },
         include: { channels: { select: { id: true } } },
@@ -80,14 +131,74 @@ export default async function OwnerDashboard() {
           value={String(dialogs30d)}
           label="Mijozlar dialoglari (30 kun)"
         />
+        <StatCard
+          icon={<KeyRound className="w-4.5 h-4.5" />}
+          value={String(totalUsers)}
+          label="Email loginlar"
+        />
+        <StatCard
+          icon={<CheckCircle2 className="w-4.5 h-4.5" />}
+          value={String(onlineChannels)}
+          label="Online kanallar"
+        />
+        <StatCard
+          icon={<ClipboardList className="w-4.5 h-4.5" />}
+          value={String(totalRequests)}
+          label="CRM arizalar"
+        />
+        <StatCard
+          icon={<Bot className="w-4.5 h-4.5" />}
+          value={String(totalAutomations)}
+          label="Avtomatizatsiyalar"
+        />
+        <StatCard
+          icon={<CreditCard className="w-4.5 h-4.5" />}
+          value={`${formatMoney(paidPayments._sum.amount ?? 0)}`}
+          label={`${paidPayments._count} ta to'langan payment`}
+        />
+        <StatCard
+          icon={<MessagesSquare className="w-4.5 h-4.5" />}
+          value={String(totalMessages)}
+          label="Jami xabarlar"
+        />
       </div>
 
       <div className="grid xl:grid-cols-5 gap-5">
         <Card className="xl:col-span-3">
-          <CardHeader title="Oylik daromad" subtitle="To'lovlar hozircha qo'lda kuzatiladi" />
-          <div className="px-6 pb-10 pt-3 text-sm text-slate-400">
-            To'lov avtomatik hisoblanishi hali sozlanmagan — mijozlar bilan
-            to'lov to'g'ridan-to'g'ri kelishiladi.
+          <CardHeader
+            title="Oxirgi kirishlar"
+            subtitle="Kim qaysi email bilan panelga kirgani"
+          />
+          <div className="px-3 pb-3">
+            {recentLogins.length === 0 ? (
+              <p className="px-3 py-4 text-sm text-slate-400">
+                Hali login tarixi yo&apos;q.
+              </p>
+            ) : (
+              recentLogins.map((user) => (
+                <div
+                  key={user.id}
+                  className="grid gap-3 px-3 py-3 rounded-xl hover:bg-[#f4f7ff] md:grid-cols-[1.5fr_1fr_1fr_auto]"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-bold truncate">{user.email}</div>
+                    <div className="text-[11px] text-slate-400 truncate">
+                      {user.client?.company ?? "Owner panel"} ·{" "}
+                      {user.role === "OWNER" ? "Owner" : "Mijoz admin"}
+                    </div>
+                  </div>
+                  <div className="text-[12px] text-slate-500">
+                    {formatDateTime(user.lastLoginAt)}
+                  </div>
+                  <div className="text-[12px] text-slate-400">
+                    IP: {user.lastLoginIp ?? "—"}
+                  </div>
+                  {user.client && (
+                    <Badge color="blue">{planLabels[user.client.plan]}</Badge>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </Card>
 
@@ -106,7 +217,7 @@ export default async function OwnerDashboard() {
           <div className="px-3 pb-3">
             {recentLeads.length === 0 ? (
               <p className="px-3 py-4 text-sm text-slate-400">
-                Hali lead yo'q — landing sahifadagi forma orqali kelganda shu yerda ko'rinadi.
+                Hali lead yo&apos;q — landing sahifadagi forma orqali kelganda shu yerda ko&apos;rinadi.
               </p>
             ) : (
               recentLeads.map((l) => (
@@ -166,7 +277,7 @@ export default async function OwnerDashboard() {
               {clients.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-300">
-                    Hali mijozlar yo'q
+                    Hali mijozlar yo&apos;q
                   </td>
                 </tr>
               ) : (

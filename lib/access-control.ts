@@ -61,6 +61,10 @@ export async function getActivePlan(clientId: string): Promise<PlanTier> {
     where: { id: clientId },
     select: {
       plan: true,
+      messageMonthlyLimit: true,
+      messagePackagePrice: true,
+      messagePackageCurrency: true,
+      messagePackageNote: true,
       subscriptions: {
         where: { status: "ACTIVE", endsAt: { gt: new Date() } },
         orderBy: { endsAt: "desc" },
@@ -78,16 +82,39 @@ export async function getClientAccess(clientId: string) {
   const plan = await getActivePlan(clientId);
   const rules = PLAN_RULES[plan];
   const monthStart = getMonthStart();
-  const automationUsedThisMonth = await prisma.automationRun.count({
-    where: {
-      createdAt: { gte: monthStart },
-      automation: { clientId },
-    },
-  });
+  const [client, automationUsedThisMonth, aiMessagesUsedThisMonth] = await Promise.all([
+    prisma.client.findUnique({
+      where: { id: clientId },
+      select: {
+        messageMonthlyLimit: true,
+        messagePackagePrice: true,
+        messagePackageCurrency: true,
+        messagePackageNote: true,
+      },
+    }),
+    prisma.automationRun.count({
+      where: {
+        createdAt: { gte: monthStart },
+        automation: { clientId },
+      },
+    }),
+    prisma.message.count({
+      where: {
+        role: "AI",
+        createdAt: { gte: monthStart },
+        conversation: { clientId },
+      },
+    }),
+  ]);
   const automationRemaining =
     rules.automationMonthlyLimit === null
       ? null
       : Math.max(0, rules.automationMonthlyLimit - automationUsedThisMonth);
+  const messageMonthlyLimit = client?.messageMonthlyLimit ?? null;
+  const messageRemaining =
+    messageMonthlyLimit === null
+      ? null
+      : Math.max(0, messageMonthlyLimit - aiMessagesUsedThisMonth);
 
   return {
     plan,
@@ -97,6 +124,12 @@ export async function getClientAccess(clientId: string) {
       automationUsedThisMonth,
       automationMonthlyLimit: rules.automationMonthlyLimit,
       automationRemaining,
+      aiMessagesUsedThisMonth,
+      messageMonthlyLimit,
+      messageRemaining,
+      messagePackagePrice: client?.messagePackagePrice ?? 0,
+      messagePackageCurrency: client?.messagePackageCurrency ?? "USD",
+      messagePackageNote: client?.messagePackageNote ?? "",
     },
   };
 }
@@ -118,6 +151,21 @@ export async function canStartAutomation(clientId: string) {
     return {
       allowed: false,
       reason: "FREE tarif uchun oylik 200 ta automation dialog limiti tugagan",
+      access,
+    };
+  }
+  return { allowed: true, reason: null, access };
+}
+
+export async function canSendAiMessage(clientId: string) {
+  const access = await getClientAccess(clientId);
+  if (
+    access.usage.messageMonthlyLimit !== null &&
+    access.usage.aiMessagesUsedThisMonth >= access.usage.messageMonthlyLimit
+  ) {
+    return {
+      allowed: false,
+      reason: "AI xabar paketi limiti tugagan",
       access,
     };
   }

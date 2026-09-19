@@ -38,6 +38,15 @@ export async function POST(req: Request) {
     );
   }
 
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      lastLoginAt: new Date(),
+      lastLoginIp: getClientIp(req),
+      loginCount: { increment: 1 },
+    },
+  });
+
   const token = await createSessionToken({
     sub: user.id,
     email: user.email,

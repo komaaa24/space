@@ -46,7 +46,10 @@ export async function POST(
       endsAt: addPeriod(cycle),
     },
   });
-  await prisma.client.update({ where: { id }, data: { plan } });
+  const updatedClient = await prisma.client.update({
+    where: { id },
+    data: { plan, status: "ACTIVE" },
+  });
 
-  return NextResponse.json({ subscription });
+  return NextResponse.json({ subscription, client: updatedClient });
 }

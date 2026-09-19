@@ -6,7 +6,7 @@ import {
   type ChatTurn,
 } from "@/lib/ai";
 import { isWithinWorkHours } from "@/lib/work-hours";
-import { canUseFeature } from "@/lib/access-control";
+import { canSendAiMessage, canUseFeature } from "@/lib/access-control";
 
 interface IncomingMessageParams {
   channelId: string;
@@ -75,13 +75,22 @@ export async function handleIncomingMessage({
     content: m.content,
   }));
 
-  const [client, channel, knowledgeItems, faqs, catalogItems, aiAgentEnabled] = await Promise.all([
+  const [
+    client,
+    channel,
+    knowledgeItems,
+    faqs,
+    catalogItems,
+    aiAgentEnabled,
+    aiMessageCredit,
+  ] = await Promise.all([
     prisma.client.findUnique({ where: { id: clientId } }),
     prisma.channel.findUnique({ where: { id: channelId } }),
     prisma.knowledgeItem.findMany({ where: { clientId } }),
     prisma.faq.findMany({ where: { clientId } }),
     prisma.catalogItem.findMany({ where: { clientId }, include: { variants: true } }),
     canUseFeature(clientId, "aiAgent"),
+    canSendAiMessage(clientId),
   ]);
 
   const withinHours =
@@ -97,6 +106,8 @@ export async function handleIncomingMessage({
     // Javob bermaydi — xabar saqlanadi, lekin AI javob yozmaydi/yubormaydi.
   } else if (!aiAgentEnabled) {
     // Tarifda AI Agent yopiq — xabar saqlanadi, operator kutadi.
+  } else if (!aiMessageCredit.allowed) {
+    // Owner qo'ygan AI xabar paketi tugagan — javob yozmaydi, operator kutadi.
   } else if (!withinHours && client?.afterHoursMode === "AUTO_REPLY") {
     reply = `Assalomu alaykum! Hozir ish vaqtimizdan tashqarida (ish soatlari: ${client.workHoursStart}–${client.workHoursEnd}). Ish boshlanishi bilan albatta javob beramiz!`;
   } else {
