@@ -4,6 +4,7 @@ import { NewMessage, type NewMessageEvent } from "teleproto/events";
 import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
 import { handleIncomingMessage } from "@/lib/inbound";
+import { decryptCredential, encryptCredential } from "@/lib/credentials";
 
 function getApiCredentials() {
   const apiId = Number(process.env.TELEGRAM_API_ID);
@@ -93,7 +94,7 @@ export async function startQrLogin(clientId: string) {
           type: "TELEGRAM_PERSONAL",
           status: "ONLINE",
           handle,
-          credential: client.session.save() as unknown as string,
+          credential: encryptCredential(client.session.save() as unknown as string),
         },
       });
 
@@ -183,7 +184,7 @@ export async function disconnectPersonalChannel(channelId: string, savedSession?
   if (!client && savedSession) {
     try {
       const { apiId, apiHash } = getApiCredentials();
-      const session = new StringSession(savedSession);
+      const session = new StringSession(decryptCredential(savedSession) ?? savedSession);
       client = new TelegramClient(session, apiId, apiHash, { connectionRetries: 2 });
       await client.connect();
     } catch {
@@ -215,7 +216,7 @@ export async function bootPersonalListeners() {
   for (const channel of channels) {
     if (!channel.credential || activeListeners.has(channel.id)) continue;
     try {
-      const session = new StringSession(channel.credential);
+      const session = new StringSession(decryptCredential(channel.credential) ?? channel.credential);
       const client = new TelegramClient(session, apiId, apiHash, {
         connectionRetries: 5,
       });

@@ -8,6 +8,7 @@ import {
   subscribeToMessaging,
   getAppBaseUrl,
 } from "@/lib/instagram";
+import { encryptCredential } from "@/lib/credentials";
 
 function redirectToChannels(error?: string) {
   const url = new URL("/admin/channels", getAppBaseUrl());
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
 
     await subscribeToMessaging(accessToken);
 
-    const credential = JSON.stringify({ igAccountId: igUserId, accessToken });
+    const credential = encryptCredential(JSON.stringify({ igAccountId: igUserId, accessToken }));
     const existing = await prisma.channel.findFirst({
       where: { clientId: session.clientId, type: "INSTAGRAM" },
     });
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
     if (existing) {
       await prisma.channel.update({
         where: { id: existing.id },
-        data: { status: "ONLINE", handle: `@${username}`, credential },
+        data: { status: "ONLINE", handle: `@${username}`, credential, externalAccountId: igUserId },
       });
     } else {
       await prisma.channel.create({
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
           status: "ONLINE",
           handle: `@${username}`,
           credential,
+          externalAccountId: igUserId,
         },
       });
     }

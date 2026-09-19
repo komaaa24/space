@@ -10,6 +10,16 @@ export async function GET() {
   const channels = await prisma.channel.findMany({
     where: { clientId: session.clientId },
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      type: true,
+      status: true,
+      handle: true,
+      externalAccountId: true,
+      aiPaused: true,
+      createdAt: true,
+      clientId: true,
+    },
   });
   return NextResponse.json({ channels });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkPaymeAuth, jsonRpcResult, jsonRpcError, PaymeError } from "@/lib/payme";
+import { decryptCredential } from "@/lib/credentials";
 
 interface RpcRequest {
   id: number | string | null;
@@ -35,13 +36,18 @@ export async function POST(req: Request) {
     : "";
   const secretKey = decoded.split(":")[1] ?? "";
 
-  const integration = secretKey
-    ? await prisma.paymentIntegration.findFirst({
-        where: { provider: "PAYME", secretKey },
-      })
-    : null;
+  const integrations = secretKey
+    ? await prisma.paymentIntegration.findMany({ where: { provider: "PAYME", active: true } })
+    : [];
+  const integration =
+    integrations.find((item) => (decryptCredential(item.secretKey) ?? item.secretKey) === secretKey) ??
+    null;
 
-  if (!integration || !checkPaymeAuth(authHeader, integration.secretKey)) {
+  const integrationSecret = integration
+    ? (decryptCredential(integration.secretKey) ?? integration.secretKey)
+    : "";
+
+  if (!integration || !checkPaymeAuth(authHeader, integrationSecret)) {
     return NextResponse.json(
       jsonRpcError(body.id, PaymeError.AUTH_FAILED, "Autentifikatsiya xato"),
     );

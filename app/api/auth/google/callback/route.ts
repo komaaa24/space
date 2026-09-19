@@ -86,6 +86,11 @@ export async function GET(req: Request) {
 
   let user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
+    if (process.env.GOOGLE_AUTO_PROVISION !== "true") {
+      loginUrl.searchParams.set("error", "google_user_not_found");
+      return NextResponse.redirect(loginUrl);
+    }
+
     const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
     const company =
       profile.name?.trim() || email.split("@")[0] || "Google foydalanuvchi";

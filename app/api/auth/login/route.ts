@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/security";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -14,6 +15,12 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+
+  const limited = checkRateLimit(`login:${getClientIp(req)}:${email}`, {
+    limit: 8,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (limited) return limited;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {

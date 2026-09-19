@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/security";
 
 // Landing sahifadagi "Bepul demo uchun ariza qoldiring" formasi shu yerga
 // yozadi — ochiq, autentifikatsiyasiz endpoint.
@@ -16,6 +17,12 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+
+  const limited = checkRateLimit(`lead:${getClientIp(req)}`, {
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (limited) return limited;
 
   const lead = await prisma.platformLead.create({
     data: { name, phone, note },

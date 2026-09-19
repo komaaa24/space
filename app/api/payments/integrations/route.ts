@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { encryptCredential } from "@/lib/credentials";
 
 export async function GET() {
   const session = await getSession();
@@ -55,10 +56,10 @@ export async function POST(req: Request) {
       clientId: session.clientId,
       provider,
       merchantId,
-      secretKey,
+      secretKey: encryptCredential(secretKey) ?? secretKey,
       serviceId,
     },
-    update: { merchantId, secretKey, serviceId, active: true },
+    update: { merchantId, secretKey: encryptCredential(secretKey) ?? secretKey, serviceId, active: true },
     select: { id: true, provider: true, merchantId: true, serviceId: true, active: true },
   });
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { handleIncomingMessage } from "@/lib/inbound";
 import { handleAutomationDmEvent, handleAutomationCommentEvent } from "@/lib/automations";
@@ -7,6 +8,7 @@ import {
   parseInstagramCredential,
   getInstagramUserProfile,
 } from "@/lib/instagram";
+import { timingSafeEqualText } from "@/lib/security";
 
 // Meta webhook tasdiqlash (bir marta, obuna sozlanganda chaqiriladi)
 export async function GET(req: Request) {
@@ -52,8 +54,32 @@ interface InstagramWebhookBody {
   }[];
 }
 
+function verifyInstagramSignature(req: Request, rawBody: string) {
+  const appSecret = process.env.META_APP_SECRET || process.env.INSTAGRAM_APP_SECRET;
+  if (!appSecret) return process.env.NODE_ENV !== "production";
+
+  const signature = req.headers.get("x-hub-signature-256");
+  if (!signature?.startsWith("sha256=")) return false;
+
+  const expected = `sha256=${crypto
+    .createHmac("sha256", appSecret)
+    .update(rawBody)
+    .digest("hex")}`;
+  return timingSafeEqualText(signature, expected);
+}
+
 export async function POST(req: Request) {
-  const body: InstagramWebhookBody = await req.json().catch(() => null);
+  const rawBody = await req.text();
+  if (!verifyInstagramSignature(req, rawBody)) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  let body: InstagramWebhookBody | null = null;
+  try {
+    body = JSON.parse(rawBody || "null") as InstagramWebhookBody | null;
+  } catch {
+    return NextResponse.json({ ok: true });
+  }
   if (!body || body.object !== "instagram") {
     return NextResponse.json({ ok: true });
   }
@@ -63,9 +89,13 @@ export async function POST(req: Request) {
       if (!event.message?.text || event.message.is_echo) continue;
 
       try {
-        const channel = await prisma.channel.findFirst({
-          where: { type: "INSTAGRAM", credential: { contains: event.recipient.id } },
-        });
+        const channel =
+          (await prisma.channel.findFirst({
+            where: { type: "INSTAGRAM", externalAccountId: event.recipient.id },
+          })) ??
+          (await prisma.channel.findFirst({
+            where: { type: "INSTAGRAM", credential: { contains: event.recipient.id } },
+          }));
         if (!channel?.credential) continue;
 
         const { accessToken } = parseInstagramCredential(channel.credential);
@@ -105,9 +135,13 @@ export async function POST(req: Request) {
       try {
         // entry.id — akkauntning IG User ID'i (comment webhooklarida
         // recipient bo'lmagani uchun shu orqali kanalni aniqlaymiz)
-        const channel = await prisma.channel.findFirst({
-          where: { type: "INSTAGRAM", credential: { contains: entry.id } },
-        });
+        const channel =
+          (await prisma.channel.findFirst({
+            where: { type: "INSTAGRAM", externalAccountId: entry.id },
+          })) ??
+          (await prisma.channel.findFirst({
+            where: { type: "INSTAGRAM", credential: { contains: entry.id } },
+          }));
         if (!channel?.credential) continue;
 
         const { accessToken } = parseInstagramCredential(channel.credential);

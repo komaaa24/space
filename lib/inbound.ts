@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { generateReply, classifyMessage, type ChatTurn } from "@/lib/ai";
+import {
+  generateReply,
+  classifyMessage,
+  assessMessageSafety,
+  type ChatTurn,
+} from "@/lib/ai";
 import { isWithinWorkHours } from "@/lib/work-hours";
 import { canUseFeature } from "@/lib/access-control";
 
@@ -29,6 +34,22 @@ export async function handleIncomingMessage({
   let conversation = await prisma.conversation.findUnique({
     where: { channelId_contactId: { channelId, contactId } },
   });
+  if (conversation && conversation.clientId !== clientId) {
+    console.error("Conversation clientId kanal egasiga mos emas, tuzatilmoqda", {
+      conversationId: conversation.id,
+      currentClientId: conversation.clientId,
+      expectedClientId: clientId,
+      channelId,
+    });
+    conversation = await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        clientId,
+        contactName: fromName,
+        contactHandle: fromUsername ? `@${fromUsername}` : conversation.contactHandle,
+      },
+    });
+  }
   if (!conversation) {
     conversation = await prisma.conversation.create({
       data: {
@@ -79,7 +100,7 @@ export async function handleIncomingMessage({
   } else if (!withinHours && client?.afterHoursMode === "AUTO_REPLY") {
     reply = `Assalomu alaykum! Hozir ish vaqtimizdan tashqarida (ish soatlari: ${client.workHoursStart}–${client.workHoursEnd}). Ish boshlanishi bilan albatta javob beramiz!`;
   } else {
-    reply = await generateReply(history, text, {
+    const profile = {
       agentName: client?.agentName,
       companyName: client?.company,
       tone: client?.agentTone,
@@ -88,7 +109,16 @@ export async function handleIncomingMessage({
       knowledgeItems,
       faqs,
       catalogItems,
-    });
+    };
+    const safety = await assessMessageSafety(text, profile);
+    if (!safety.allowed) {
+      reply =
+        safety.reason === "AI_IDENTITY"
+          ? `Ha, men ${client?.company ?? "kompaniya"} bo'yicha avtomatlashtirilgan yordamchiman. Shu biznesga oid savolingiz bo'lsa, yordam beraman.`
+          : `Bu savol ${client?.company ?? "kompaniya"} faoliyatiga tegishli emas. Men faqat ${client?.company ?? "kompaniya"} xizmatlari, narxlari va qabul/buyurtma jarayoni bo'yicha yordam bera olaman. Shu mavzuda savolingiz bo'lsa, yozing.`;
+    } else {
+      reply = await generateReply(history, text, profile);
+    }
   }
 
   if (reply) {

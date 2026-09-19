@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { disconnectPersonalChannel } from "@/lib/telegram-personal";
 import { unsubscribeFromMessaging, parseInstagramCredential } from "@/lib/instagram";
+import { decryptCredential } from "@/lib/credentials";
 
 export async function PATCH(
   req: Request,
@@ -27,6 +28,16 @@ export async function PATCH(
   const updated = await prisma.channel.update({
     where: { id },
     data: { aiPaused: body.aiPaused },
+    select: {
+      id: true,
+      type: true,
+      status: true,
+      handle: true,
+      externalAccountId: true,
+      aiPaused: true,
+      createdAt: true,
+      clientId: true,
+    },
   });
 
   return NextResponse.json({ channel: updated });
@@ -52,7 +63,8 @@ export async function DELETE(
       (err) => console.error("Shaxsiy akkauntdan chiqishda xatolik:", err),
     );
   } else if (channel.type === "TELEGRAM_BOT" && channel.credential) {
-    await fetch(`https://api.telegram.org/bot${channel.credential}/deleteWebhook`).catch(
+    const token = decryptCredential(channel.credential);
+    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`).catch(
       () => {},
     );
   } else if (channel.type === "INSTAGRAM" && channel.credential) {

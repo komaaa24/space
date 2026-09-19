@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { handleIncomingMessage } from "@/lib/inbound";
+import { decryptCredential } from "@/lib/credentials";
 
 export async function POST(
   req: Request,
@@ -19,7 +20,17 @@ export async function POST(
     return NextResponse.json({ ok: true });
   }
 
-  const token = channel.credential;
+  const expectedSecret = decryptCredential(channel.webhookSecret);
+  if (expectedSecret) {
+    const actualSecret = req.headers.get("x-telegram-bot-api-secret-token");
+    if (actualSecret !== expectedSecret) {
+      return NextResponse.json({ error: "Invalid webhook secret" }, { status: 401 });
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Webhook secret not configured" }, { status: 401 });
+  }
+
+  const token = decryptCredential(channel.credential);
 
   try {
     await handleIncomingMessage({

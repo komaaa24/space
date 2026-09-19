@@ -5,6 +5,7 @@ import {
   verifyClickSignComplete,
   ClickError,
 } from "@/lib/click";
+import { decryptCredential } from "@/lib/credentials";
 
 async function readFields(req: Request): Promise<Record<string, string>> {
   const contentType = req.headers.get("content-type") ?? "";
@@ -39,12 +40,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (action === "0") {
+  if (action === "0") {
+      const secretKey = decryptCredential(integration.secretKey) ?? integration.secretKey;
       // Prepare
       const validSign = verifyClickSignPrepare({
         clickTransId: fields.click_trans_id,
         serviceId: fields.service_id,
-        secretKey: integration.secretKey,
+        secretKey,
         merchantTransId: fields.merchant_trans_id,
         amount: fields.amount,
         action: fields.action,
@@ -84,11 +86,12 @@ export async function POST(req: Request) {
     }
 
     if (action === "1") {
+      const secretKey = decryptCredential(integration.secretKey) ?? integration.secretKey;
       // Complete
       const validSign = verifyClickSignComplete({
         clickTransId: fields.click_trans_id,
         serviceId: fields.service_id,
-        secretKey: integration.secretKey,
+        secretKey,
         merchantTransId: fields.merchant_trans_id,
         merchantPrepareId: fields.merchant_prepare_id,
         amount: fields.amount,

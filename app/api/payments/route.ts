@@ -37,6 +37,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Summani to'g'ri kiriting" }, { status: 400 });
   }
 
+  if (conversationId) {
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        clientId: session.clientId,
+        channel: { clientId: session.clientId },
+      },
+      select: { id: true },
+    });
+    if (!conversation) {
+      return NextResponse.json({ error: "Suhbat topilmadi" }, { status: 404 });
+    }
+  }
+
   const integrations = await prisma.paymentIntegration.findMany({
     where: { clientId: session.clientId, active: true },
   });

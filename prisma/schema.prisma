@@ -126,7 +126,7 @@ model PaymentIntegration {
   id         String          @id @default(cuid())
   provider   PaymentProvider
   merchantId String // Payme: Kassa ID; Click: Merchant ID
-  secretKey  String // Payme: Kassa key; Click: Secret key
+  secretKey  String // Payme: Kassa key; Click: Secret key (encrypted at rest)
   serviceId  String? // faqat Click uchun
   active     Boolean         @default(true)
   createdAt  DateTime        @default(now())
@@ -164,6 +164,8 @@ model Payment {
 
   conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   conversationId String?
+
+  @@index([clientId, createdAt])
 }
 
 enum KnowledgeType {
@@ -275,15 +277,19 @@ model Channel {
   type       ChannelType
   status     ChannelStatus @default(PENDING)
   handle     String?
-  credential String? // shifrlangan token / session — keyingi bosqichda
-  aiPaused   Boolean       @default(false) // integratsiya saqlanadi, AI shu kanalga javob yozmaydi
-  createdAt  DateTime      @default(now())
+  credential        String? // encrypted token / session
+  externalAccountId String?
+  webhookSecret     String? // Telegram webhook secret token (encrypted)
+  aiPaused          Boolean       @default(false) // integratsiya saqlanadi, AI shu kanalga javob yozmaydi
+  createdAt         DateTime      @default(now())
 
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
 
   conversations Conversation[]
   automations   Automation[]
+
+  @@index([type, externalAccountId])
 }
 
 enum ConversationStatus {
@@ -312,6 +318,7 @@ model Conversation {
   payments Payment[]
 
   @@unique([channelId, contactId])
+  @@index([clientId, lastMessageAt])
 }
 
 enum MessageRole {
@@ -328,6 +335,8 @@ model Message {
 
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   conversationId String
+
+  @@index([conversationId, createdAt])
 }
 
 enum RequestCategory {
@@ -358,6 +367,8 @@ model Request {
 
   conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   conversationId String?
+
+  @@index([clientId, createdAt])
 }
 
 enum AutomationRunStatus {

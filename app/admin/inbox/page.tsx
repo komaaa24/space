@@ -79,7 +79,7 @@ export default function InboxPage() {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   async function load() {
-    const res = await fetch("/api/inbox");
+    const res = await fetch("/api/inbox", { cache: "no-store" });
     const data = await res.json();
     const list: ApiConversation[] = data.conversations ?? [];
     setConversations(list);

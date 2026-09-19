@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { decryptCredential } from "@/lib/credentials";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function POST(
   req: Request,
@@ -22,13 +26,18 @@ export async function POST(
     where: { id },
     include: { channel: true },
   });
-  if (!conversation || conversation.clientId !== session.clientId) {
+  if (
+    !conversation ||
+    conversation.clientId !== session.clientId ||
+    conversation.channel.clientId !== session.clientId
+  ) {
     return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
   }
 
   if (conversation.channel.type === "TELEGRAM_BOT" && conversation.channel.credential) {
+    const token = decryptCredential(conversation.channel.credential);
     await fetch(
-      `https://api.telegram.org/bot${conversation.channel.credential}/sendMessage`,
+      `https://api.telegram.org/bot${token}/sendMessage`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1,4 +1,5 @@
 import { getAppBaseUrl } from "@/lib/env";
+import { decryptCredential } from "@/lib/credentials";
 
 const GRAPH_VERSION = "v21.0";
 
@@ -300,5 +301,5 @@ export interface InstagramCredential {
 }
 
 export function parseInstagramCredential(raw: string): InstagramCredential {
-  return JSON.parse(raw);
+  return JSON.parse(decryptCredential(raw) ?? raw);
 }

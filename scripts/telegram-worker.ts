@@ -7,6 +7,7 @@ import "dotenv/config";
 import { PrismaClient } from "../lib/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { getPgAdapterConfig } from "../lib/database-url";
+import { decryptCredential } from "../lib/credentials";
 
 const adapter = new PrismaPg(getPgAdapterConfig());
 const prisma = new PrismaClient({ adapter });
@@ -79,7 +80,7 @@ async function main() {
   console.log(`${channels.length} ta bot topildi.`);
   await Promise.all(
     channels.map((c) =>
-      pollBot(c.id, c.clientId, c.credential!, c.handle ?? c.id),
+      pollBot(c.id, c.clientId, decryptCredential(c.credential)!, c.handle ?? c.id),
     ),
   );
 }

@@ -136,7 +136,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               active
                 ? "text-electric-600"
                 : locked
-                  ? "text-slate-300 cursor-not-allowed"
+                  ? "text-slate-300 hover:text-slate-500"
                   : "text-slate-500 hover:text-slate-800"
             }`;
             const content = (
@@ -154,18 +154,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 )}
               </>
             );
-            if (locked) {
-              return (
-                <span key={t.href} className={className} title="Bu funksiya VIP tarifda ochiq">
-                  {content}
-                </span>
-              );
-            }
             return (
               <Link
                 key={t.href}
                 href={t.href}
                 className={className}
+                title={locked ? "VIP tarifda ishlaydi, preview ko'rinadi" : undefined}
               >
                 {content}
               </Link>

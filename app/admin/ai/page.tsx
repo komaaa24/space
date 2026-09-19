@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import {
   BookOpen,
   HelpCircle,
@@ -284,25 +285,7 @@ export default function AiStudioPage() {
     }
   }
 
-  if (aiAllowed === false) {
-    return (
-      <div className="space-y-5">
-        <PageTitle
-          title="AI Studio"
-          subtitle="Agentning miyasi: bilimlar, javoblar, qoidalar va sinov — bir joyda"
-        />
-        <div className="rounded-2xl bg-white border border-line p-10 text-center">
-          <div className="w-12 h-12 rounded-xl bg-electric-50 text-electric-600 flex items-center justify-center mx-auto">
-            <Lock className="w-5 h-5" />
-          </div>
-          <h2 className="font-extrabold mt-4">AI Agent VIP tarifda ochiq</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Bilimlar bazasi, FAQ, stsenariylar va agent sinovi uchun VIP tarif kerak.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const aiLocked = aiAllowed === false;
 
   return (
     <div className="space-y-5">
@@ -310,6 +293,30 @@ export default function AiStudioPage() {
         title="AI Studio"
         subtitle="Agentning miyasi: bilimlar, javoblar, qoidalar va sinov — bir joyda"
       />
+
+      <div className="relative">
+        {aiLocked && (
+          <div className="absolute inset-0 z-20 rounded-3xl bg-white/45 backdrop-blur-[1px]">
+            <div className="sticky top-28 mx-auto mt-8 w-full max-w-md rounded-2xl border border-electric-100 bg-white/95 p-5 text-center shadow-[0_20px_60px_rgba(15,94,255,0.16)]">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-electric-50 text-electric-600">
+                <Lock className="h-5 w-5" />
+              </div>
+              <h2 className="mt-3 font-extrabold">AI Studio VIP tarifda ochiq</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Bilimlar bazasi, FAQ, stsenariylar va sinov maydonini ko&apos;rishingiz mumkin,
+                lekin sozlash uchun VIP tarif kerak.
+              </p>
+              <Link
+                href="/#pricing"
+                className="mt-4 inline-flex rounded-xl bg-electric-500 px-5 py-2.5 text-sm font-bold text-white shadow-[0_10px_24px_rgba(15,94,255,0.28)]"
+              >
+                Tariflarni ko&apos;rish
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <div className={aiLocked ? "pointer-events-none select-none opacity-45" : undefined}>
 
       {/* Agent summary strip */}
       <div className="rounded-2xl bg-navy-900 text-white p-5 flex items-center gap-5 flex-wrap relative overflow-hidden">
@@ -706,6 +713,9 @@ export default function AiStudioPage() {
           </p>
         </div>
       )}
+
+        </div>
+      </div>
 
       {showFaqModal && (
         <div className="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-sm flex items-center justify-center p-6">
