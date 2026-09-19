@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   Bot,
@@ -11,8 +11,10 @@ import {
   CreditCard,
   UserCircle,
   Check,
+  X,
   Plus,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import {
   Badge,
@@ -20,7 +22,6 @@ import {
   PrimaryButton,
   inputCls,
 } from "@/components/ui";
-import { tariffs } from "@/lib/mock-data";
 
 const sections = [
   { id: "company", label: "Kompaniya", icon: Building2 },
@@ -32,6 +33,51 @@ const sections = [
   { id: "billing", label: "Tarif va to'lov", icon: CreditCard },
   { id: "account", label: "Akkaunt", icon: UserCircle },
 ];
+
+type BillingCycle = "monthly" | "yearly";
+
+const billingPlans = [
+  {
+    id: "free",
+    name: "FREE",
+    monthly: 0,
+    yearlyMonthly: 0,
+    badge: "",
+    features: [
+      { label: "Instagram Automation: 200 dialog/oy", included: true },
+      { label: "AI Agent yopiq", included: false },
+      { label: "Katalog yopiq", included: false },
+    ],
+  },
+  {
+    id: "pro",
+    name: "PRO",
+    monthly: 75000,
+    yearlyMonthly: 50000,
+    badge: "Ommabop",
+    features: [
+      { label: "Instagram Automation cheksiz", included: true },
+      { label: "AI Agent yopiq", included: false },
+      { label: "Katalog yopiq", included: false },
+    ],
+  },
+  {
+    id: "vip",
+    name: "VIP",
+    monthly: 300000,
+    yearlyMonthly: 225000,
+    badge: "",
+    features: [
+      { label: "Instagram Automation cheksiz", included: true },
+      { label: "AI Agent ochiq", included: true },
+      { label: "Katalog ochiq", included: true },
+    ],
+  },
+];
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("uz-UZ").format(value);
+}
 
 function Field({
   label,
@@ -114,7 +160,7 @@ function AccountTab({ email }: { email: string }) {
     <>
       <SectionCard title="Akkaunt" subtitle={email}>
         <p className="text-xs text-slate-400">
-          Login (email) o'zgartirish uchun Chatspace jamoasiga murojaat qiling.
+          Login (email) o&apos;zgartirish uchun Chatspace jamoasiga murojaat qiling.
         </p>
       </SectionCard>
       <SectionCard title="Parol">
@@ -167,11 +213,18 @@ export default function SettingsPage() {
   const [workHoursEnd, setWorkHoursEnd] = useState("21:00");
   const [afterHoursMode, setAfterHoursMode] = useState("ALWAYS");
   const [plan, setPlan] = useState("");
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [loaded, setLoaded] = useState(false);
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingAgent, setSavingAgent] = useState(false);
   const [savingHours, setSavingHours] = useState(false);
   const [savedField, setSavedField] = useState<"company" | "agent" | "hours" | null>(null);
+
+  const yearlySummary = useMemo(() => {
+    return Math.max(
+      ...billingPlans.map((item) => (item.monthly - item.yearlyMonthly) * 12),
+    );
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -238,7 +291,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <div className="max-w-3xl space-y-5">
+      <div className={`${active === "billing" ? "max-w-6xl" : "max-w-3xl"} space-y-5`}>
         {active === "company" && (
           <SectionCard title="Kompaniya ma'lumotlari">
             <Field label="Kompaniya nomi">
@@ -300,7 +353,7 @@ export default function SettingsPage() {
                     disabled={!loaded}
                     className={inputCls}
                   >
-                    <option>Do'stona va samimiy</option>
+                    <option>Do&apos;stona va samimiy</option>
                     <option>Rasmiy</option>
                     <option>Qisqa va aniq</option>
                   </select>
@@ -346,17 +399,17 @@ export default function SettingsPage() {
             </SectionCard>
 
             <SectionCard
-              title="Agent nimani o'rgandi"
-              subtitle="Haqiqiy dialoglardan olingan xulosalar — avtomatik qo'llanadi"
+              title="Agent nimani o&apos;rgandi"
+              subtitle="Haqiqiy dialoglardan olingan xulosalar — avtomatik qo&apos;llanadi"
             >
               <div className="rounded-xl bg-[#f4f7ff] border border-line p-4">
                 <div className="text-sm font-bold flex items-center gap-2">
                   <Bot className="w-4 h-4 text-electric-600" />
-                  Qiziqqan mijozlarni tezroq demoga o'tkazish
+                  Qiziqqan mijozlarni tezroq demoga o&apos;tkazish
                 </div>
                 <p className="text-[13px] text-slate-500 mt-1.5">
-                  Demo so'ragan mijozlar allaqachon xarid bosqichida — mahsulotni
-                  qayta tushuntirish o'rniga bitta aniq keyingi qadam taklif
+                  Demo so&apos;ragan mijozlar allaqachon xarid bosqichida — mahsulotni
+                  qayta tushuntirish o&apos;rniga bitta aniq keyingi qadam taklif
                   qilinadi.
                 </p>
               </div>
@@ -471,53 +524,182 @@ export default function SettingsPage() {
               </Badge>
             </div>
             <PrimaryButton disabled className="opacity-50 cursor-not-allowed">
-              <Plus className="w-4 h-4" /> A'zo qo'shish (tez orada)
+              <Plus className="w-4 h-4" /> A&apos;zo qo&apos;shish (tez orada)
             </PrimaryButton>
           </SectionCard>
         )}
 
         {active === "billing" && (
           <>
-            <div className="rounded-2xl electric-gradient text-white p-6 flex items-center justify-between">
+            <div className="rounded-2xl electric-gradient text-white p-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="text-[13px] text-electric-100">Joriy tarif</div>
                 <div className="text-2xl font-extrabold mt-1">
-                  {tariffs.find((t) => t.id === plan.toLowerCase())?.name ?? plan}
+                  {billingPlans.find((t) => t.id === plan.toLowerCase())?.name ?? plan}
                 </div>
                 <div className="text-[13px] text-electric-100 mt-1">
-                  To'lov hozircha Chatspace operatori bilan bevosita kelishiladi
+                  To&apos;lov hozircha Chatspace operatori bilan bevosita kelishiladi
+                </div>
+              </div>
+              <div className="w-full md:w-auto">
+                <div className="inline-flex w-full rounded-2xl border border-white/20 bg-white/10 p-1 md:w-auto">
+                  {(["monthly", "yearly"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setBillingCycle(value)}
+                      className={`min-w-28 flex-1 rounded-xl px-5 py-3 text-sm font-extrabold transition-all duration-300 md:flex-none ${
+                        billingCycle === value
+                          ? "bg-white text-electric-700 shadow-[0_12px_30px_rgba(11,18,38,0.18)]"
+                          : "text-electric-50 hover:bg-white/10"
+                      }`}
+                    >
+                      {value === "monthly" ? "Oylik" : "Yillik"}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-electric-50">
+                  <Sparkles className="h-4 w-4" />
+                  Yillikda {formatMoney(yearlySummary)} so&apos;mgacha tejaysiz
                 </div>
               </div>
             </div>
-            <div className="grid md:grid-cols-3 gap-4 items-start">
-              {tariffs.map((t) => {
+            <div className="grid gap-5 md:grid-cols-3 items-stretch">
+              {billingPlans.map((t) => {
                 const isCurrent = t.id === plan.toLowerCase();
+                const isYearly = billingCycle === "yearly";
+                const highlighted = t.id === "pro";
+                const monthlyPrice = isYearly ? t.yearlyMonthly : t.monthly;
+                const yearlyTotal = t.yearlyMonthly * 12;
+                const monthlyTotal = t.monthly * 12;
+                const savings = monthlyTotal - yearlyTotal;
+                const discount =
+                  t.monthly > 0 ? Math.round((1 - t.yearlyMonthly / t.monthly) * 100) : 0;
+
                 return (
-                <div
-                  key={t.id}
-                  className={`rounded-2xl bg-white border p-5 ${
-                    isCurrent ? "border-electric-400 ring-2 ring-electric-100" : "border-line"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-sm">{t.name}</h3>
-                    {isCurrent && <Badge color="blue">Joriy</Badge>}
+                  <div
+                    key={t.id}
+                    className={`group relative overflow-hidden rounded-[26px] p-6 transition-all duration-500 ${
+                      highlighted
+                        ? "bg-navy-900 text-white shadow-[0_24px_70px_rgba(11,18,38,0.18)]"
+                        : "bg-white border border-line"
+                    } ${isCurrent ? "ring-2 ring-electric-200" : ""}`}
+                  >
+                    {highlighted && <div className="absolute inset-0 dot-grid opacity-10" />}
+                    <div className="relative flex h-full flex-col">
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="font-extrabold text-lg">{t.name}</h3>
+                        <div className="flex items-center gap-2">
+                          {t.badge && (
+                            <span className="rounded-full bg-electric-500 px-3 py-1 text-[11px] font-extrabold text-white">
+                              {t.badge}
+                            </span>
+                          )}
+                          {isCurrent && <Badge color="blue">Joriy</Badge>}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 min-h-[108px]">
+                        <div className="flex items-baseline gap-1 transition-all duration-500">
+                          <span className="text-[32px] font-extrabold tracking-tight tabular-nums">
+                            {formatMoney(monthlyPrice)}
+                          </span>
+                          <span className="text-sm text-slate-400">so&apos;m/oy</span>
+                        </div>
+                        <div
+                          className={`mt-2 text-sm transition-all duration-500 ${
+                            isYearly
+                              ? "translate-y-0 opacity-100"
+                              : "translate-y-1 opacity-60"
+                          } ${highlighted ? "text-cyan-100" : "text-slate-500"}`}
+                        >
+                          {t.monthly === 0
+                            ? "Yillik to'lov: 0 so'm"
+                            : `Yillik jami: ${formatMoney(yearlyTotal)} so'm`}
+                        </div>
+                        {savings > 0 && (
+                          <div
+                            className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-extrabold transition-all duration-500 ${
+                              isYearly ? "opacity-100" : "opacity-60"
+                            } ${
+                              highlighted
+                                ? "bg-white/10 text-cyan-100"
+                                : "bg-emerald-50 text-emerald-700"
+                            }`}
+                          >
+                            -{discount}% • {formatMoney(savings)} so&apos;m tejaladi
+                          </div>
+                        )}
+                      </div>
+
+                      <ul className="mt-6 space-y-3">
+                        {t.features.map((feature) => (
+                          <li
+                            key={feature.label}
+                            className={`flex items-start gap-2.5 text-sm leading-6 ${
+                              feature.included
+                                ? ""
+                                : highlighted
+                                  ? "text-slate-400"
+                                  : "text-slate-500"
+                            }`}
+                          >
+                            <span
+                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
+                                feature.included
+                                  ? highlighted
+                                    ? "bg-electric-500/30"
+                                    : "bg-electric-50"
+                                  : highlighted
+                                    ? "bg-white/10"
+                                    : "bg-slate-100"
+                              }`}
+                            >
+                              {feature.included ? (
+                                <Check
+                                  className={`h-3 w-3 ${
+                                    highlighted ? "text-cyan-300" : "text-electric-600"
+                                  }`}
+                                />
+                              ) : (
+                                <X className="h-3 w-3 text-slate-400" />
+                              )}
+                            </span>
+                            {feature.label}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div
+                        className={`mt-6 rounded-2xl border p-4 text-sm transition-all duration-500 ${
+                          highlighted
+                            ? "border-white/10 bg-white/5 text-cyan-50"
+                            : "border-line bg-[#fafbff] text-slate-600"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <span>{isYearly ? "Bugun to'lov" : "Oylik to'lov"}</span>
+                          <strong className="whitespace-nowrap text-base text-inherit">
+                            {formatMoney(isYearly ? yearlyTotal : monthlyPrice)} so&apos;m
+                          </strong>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isCurrent}
+                        className={`mt-6 rounded-2xl py-3.5 text-sm font-bold transition-all duration-300 ${
+                          isCurrent
+                            ? "cursor-default border border-line bg-slate-50 text-slate-400"
+                            : highlighted
+                              ? "bg-electric-500 text-white shadow-[0_14px_30px_rgba(15,94,255,0.32)] hover:bg-electric-600"
+                              : "border border-line hover:border-electric-300 hover:bg-electric-50"
+                        }`}
+                      >
+                        {isCurrent ? "Joriy tarif" : "Tanlash"}
+                      </button>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-baseline gap-1">
-                    <span className="text-xl font-extrabold">{t.price}</span>
-                    <span className="text-[11px] text-slate-400">
-                      so'm/{t.period}
-                    </span>
-                  </div>
-                  <ul className="mt-4 space-y-2">
-                    {t.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-xs">
-                        <Check className="w-3.5 h-3.5 text-electric-500 mt-0.5 shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
                 );
               })}
             </div>
