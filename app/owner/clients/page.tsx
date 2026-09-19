@@ -13,6 +13,10 @@ import {
   MessagesSquare,
   Bot,
   ClipboardList,
+  Settings,
+  ShieldCheck,
+  CalendarDays,
+  Gauge,
 } from "lucide-react";
 import { Badge, PageTitle, PrimaryButton, inputCls } from "@/components/ui";
 
@@ -157,6 +161,7 @@ export default function OwnerClientsPage() {
   const [clients, setClients] = useState<ApiClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [settingsClientId, setSettingsClientId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
   const [company, setCompany] = useState("");
@@ -223,6 +228,8 @@ export default function OwnerClientsPage() {
     },
     { users: 0, logins: 0, messages: 0, aiMessages: 0, requests: 0, onlineChannels: 0 },
   );
+
+  const settingsClient = clients.find((client) => client.id === settingsClientId) ?? null;
 
   function resetForm() {
     setCompany("");
@@ -390,7 +397,7 @@ export default function OwnerClientsPage() {
           <div className="py-16 text-center text-sm text-slate-300">Hech narsa topilmadi</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[1500px]">
+            <table className="w-full text-sm min-w-[1280px]">
               <thead>
                 <tr className="text-left text-[11px] uppercase tracking-wider text-slate-300 border-b border-line">
                   <th className="px-5 py-3 font-semibold">Kompaniya</th>
@@ -403,9 +410,8 @@ export default function OwnerClientsPage() {
                   <th className="px-5 py-3 font-semibold">Arizalar</th>
                   <th className="px-5 py-3 font-semibold">AI bazasi</th>
                   <th className="px-5 py-3 font-semibold">Avtomatizatsiya</th>
-                  <th className="px-5 py-3 font-semibold">To&apos;lovlar</th>
                   <th className="px-5 py-3 font-semibold">Oxirgi faollik</th>
-                  <th className="px-5 py-3 font-semibold"></th>
+                  <th className="px-5 py-3 font-semibold">Boshqaruv</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -413,21 +419,8 @@ export default function OwnerClientsPage() {
                   <ClientRow
                     key={client.id}
                     client={client}
-                    planDraft={planDrafts[client.id] ?? client.plan}
-                    cycleDraft={cycleDrafts[client.id] ?? "MONTHLY"}
-                    packageDraft={getPackageDraft(client)}
-                    updatingPlan={updatingPlanId === client.id}
-                    updatingPackage={updatingPackageId === client.id}
                     resettingPassword={resettingId === client.id}
-                    onPlanChange={(value) =>
-                      setPlanDrafts((drafts) => ({ ...drafts, [client.id]: value }))
-                    }
-                    onCycleChange={(value) =>
-                      setCycleDrafts((drafts) => ({ ...drafts, [client.id]: value }))
-                    }
-                    onPackagePatch={(patch) => patchPackageDraft(client.id, patch)}
-                    onSavePlan={() => updateClientPlan(client.id)}
-                    onSavePackage={() => updateMessagePackage(client)}
+                    onOpenSettings={() => setSettingsClientId(client.id)}
                     onResetPassword={() => resetPassword(client.id)}
                   />
                 ))}
@@ -466,6 +459,29 @@ export default function OwnerClientsPage() {
             </PrimaryButton>
           </div>
         </div>
+      )}
+
+      {settingsClient && (
+        <ClientSettingsModal
+          client={settingsClient}
+          planDraft={planDrafts[settingsClient.id] ?? settingsClient.plan}
+          cycleDraft={cycleDrafts[settingsClient.id] ?? "MONTHLY"}
+          packageDraft={getPackageDraft(settingsClient)}
+          updatingPlan={updatingPlanId === settingsClient.id}
+          updatingPackage={updatingPackageId === settingsClient.id}
+          resettingPassword={resettingId === settingsClient.id}
+          onClose={() => setSettingsClientId(null)}
+          onPlanChange={(value) =>
+            setPlanDrafts((drafts) => ({ ...drafts, [settingsClient.id]: value }))
+          }
+          onCycleChange={(value) =>
+            setCycleDrafts((drafts) => ({ ...drafts, [settingsClient.id]: value }))
+          }
+          onPackagePatch={(patch) => patchPackageDraft(settingsClient.id, patch)}
+          onSavePlan={() => updateClientPlan(settingsClient.id)}
+          onSavePackage={() => updateMessagePackage(settingsClient)}
+          onResetPassword={() => resetPassword(settingsClient.id)}
+        />
       )}
 
       {resetResult && (
@@ -517,31 +533,13 @@ export default function OwnerClientsPage() {
 
 function ClientRow({
   client,
-  planDraft,
-  cycleDraft,
-  packageDraft,
-  updatingPlan,
-  updatingPackage,
   resettingPassword,
-  onPlanChange,
-  onCycleChange,
-  onPackagePatch,
-  onSavePlan,
-  onSavePackage,
+  onOpenSettings,
   onResetPassword,
 }: {
   client: ApiClient;
-  planDraft: ApiClient["plan"];
-  cycleDraft: BillingCycle;
-  packageDraft: PackageDraft;
-  updatingPlan: boolean;
-  updatingPackage: boolean;
   resettingPassword: boolean;
-  onPlanChange: (value: ApiClient["plan"]) => void;
-  onCycleChange: (value: BillingCycle) => void;
-  onPackagePatch: (patch: Partial<PackageDraft>) => void;
-  onSavePlan: () => void;
-  onSavePackage: () => void;
+  onOpenSettings: () => void;
   onResetPassword: () => void;
 }) {
   return (
@@ -573,24 +571,19 @@ function ClientRow({
         </div>
       </td>
       <td className="px-5 py-4">
-        <PlanControl
-          client={client}
-          planDraft={planDraft}
-          cycleDraft={cycleDraft}
-          updating={updatingPlan}
-          onPlanChange={onPlanChange}
-          onCycleChange={onCycleChange}
-          onSave={onSavePlan}
-        />
+        <div className="space-y-2 min-w-36">
+          <Badge color={client.plan === "VIP" ? "blue" : client.plan === "PRO" ? "navy" : "gray"}>
+            {planLabels[client.plan]}
+          </Badge>
+          <div className="text-[11px] leading-5 text-slate-400">
+            {client.stats.activeSubscription
+              ? `${client.stats.activeSubscription.cycle === "YEARLY" ? "Yillik" : "Oylik"} · ${formatDate(client.stats.activeSubscription.endsAt)}`
+              : "Subscription yo'q"}
+          </div>
+        </div>
       </td>
       <td className="px-5 py-4">
-        <PackageControl
-          client={client}
-          draft={packageDraft}
-          updating={updatingPackage}
-          onPatch={onPackagePatch}
-          onSave={onSavePackage}
-        />
+        <PackageSnapshot client={client} />
       </td>
       <td className="px-5 py-4">
         <Badge color={statusMeta[client.status].color} dot>
@@ -645,28 +638,334 @@ function ClientRow({
           Link bosildi {client.stats.automationRuns.linkClicked}
         </div>
       </td>
-      <td className="px-5 py-4">
-        <div className="font-semibold">{formatMoney(client.stats.payments.paidAmount)} so&apos;m</div>
-        <div className="text-[11px] text-slate-400 mt-1">
-          Paid {client.stats.payments.paid} · Pending {client.stats.payments.pending}
-        </div>
-      </td>
       <td className="px-5 py-4 text-slate-500">{formatDateTime(client.stats.lastMessageAt)}</td>
       <td className="px-5 py-4">
-        <button
-          onClick={onResetPassword}
-          disabled={resettingPassword}
-          className="flex items-center gap-1.5 text-xs font-semibold text-electric-600 bg-electric-50 rounded-lg px-3 py-2 hover:bg-electric-100 transition-colors disabled:opacity-60"
-        >
-          {resettingPassword ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <KeyRound className="w-3.5 h-3.5" />
-          )}
-          Parol berish
-        </button>
+        <div className="flex flex-col gap-2 min-w-32">
+          <button
+            onClick={onOpenSettings}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-navy-900 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-navy-800"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Sozlash
+          </button>
+          <button
+            onClick={onResetPassword}
+            disabled={resettingPassword}
+            className="flex items-center justify-center gap-1.5 text-xs font-semibold text-electric-600 bg-electric-50 rounded-xl px-3 py-2 hover:bg-electric-100 transition-colors disabled:opacity-60"
+          >
+            {resettingPassword ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <KeyRound className="w-3.5 h-3.5" />
+            )}
+            Parol
+          </button>
+        </div>
       </td>
     </tr>
+  );
+}
+
+function PackageSnapshot({ client }: { client: ApiClient }) {
+  const hasLimit = client.stats.messageMonthlyLimit !== null;
+  const limit = client.stats.messageMonthlyLimit ?? 0;
+  const used = client.stats.aiMessagesThisMonth;
+  const progress = hasLimit && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+
+  return (
+    <div className="min-w-48 rounded-xl border border-line bg-[#fafbff] px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-semibold text-slate-400">AI javob</span>
+        <span className="text-xs font-extrabold text-navy-900">
+          {used}
+          {hasLimit ? ` / ${limit}` : " / cheksiz"}
+        </span>
+      </div>
+      {hasLimit && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+          <div className="h-full rounded-full bg-electric-500" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+      <div className="mt-2 text-[11px] text-slate-400">
+        Qoldi: {client.stats.messageRemaining === null ? "cheksiz" : client.stats.messageRemaining}
+      </div>
+      {client.stats.messagePackagePrice > 0 && (
+        <div className="mt-0.5 text-[11px] font-semibold text-slate-600">
+          {formatMoney(client.stats.messagePackagePrice)} {client.stats.messagePackageCurrency}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClientSettingsModal({
+  client,
+  planDraft,
+  cycleDraft,
+  packageDraft,
+  updatingPlan,
+  updatingPackage,
+  resettingPassword,
+  onClose,
+  onPlanChange,
+  onCycleChange,
+  onPackagePatch,
+  onSavePlan,
+  onSavePackage,
+  onResetPassword,
+}: {
+  client: ApiClient;
+  planDraft: ApiClient["plan"];
+  cycleDraft: BillingCycle;
+  packageDraft: PackageDraft;
+  updatingPlan: boolean;
+  updatingPackage: boolean;
+  resettingPassword: boolean;
+  onClose: () => void;
+  onPlanChange: (value: ApiClient["plan"]) => void;
+  onCycleChange: (value: BillingCycle) => void;
+  onPackagePatch: (patch: Partial<PackageDraft>) => void;
+  onSavePlan: () => void;
+  onSavePackage: () => void;
+  onResetPassword: () => void;
+}) {
+  const hasLimit = client.stats.messageMonthlyLimit !== null;
+  const limit = client.stats.messageMonthlyLimit ?? 0;
+  const used = client.stats.aiMessagesThisMonth;
+  const progress = hasLimit && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-navy-900/65 backdrop-blur-sm p-4 md:p-6">
+      <div className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="border-b border-line bg-[#f8faff] px-5 py-4 md:px-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-extrabold tracking-tight">{client.company}</h2>
+                <Badge color={client.plan === "VIP" ? "blue" : client.plan === "PRO" ? "navy" : "gray"}>
+                  {planLabels[client.plan]}
+                </Badge>
+                <Badge color={statusMeta[client.status].color} dot>
+                  {statusMeta[client.status].label}
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-slate-400">
+                Admin loginlari, tarif, AI xabar paketi va foydalanish ko&apos;rsatkichlari
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onResetPassword}
+                disabled={resettingPassword}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-electric-200 bg-white px-3.5 py-2.5 text-xs font-bold text-electric-600 transition-colors hover:bg-electric-50 disabled:opacity-60"
+              >
+                {resettingPassword ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="h-4 w-4" />
+                )}
+                Parol berish
+              </button>
+              <button
+                onClick={onClose}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white text-slate-400 transition-colors hover:border-slate-300 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-6">
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-2xl border border-line bg-navy-900 p-5 text-white">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-electric-500">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold">Tarif va dostup</div>
+                  <div className="text-xs text-slate-300">
+                    Owner istagan klientga tarifni qo&apos;lda yoqib beradi
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <SettingMetric label="Joriy tarif" value={planLabels[client.plan]} />
+                <SettingMetric
+                  label="Billing"
+                  value={
+                    client.stats.activeSubscription
+                      ? client.stats.activeSubscription.cycle === "YEARLY"
+                        ? "Yillik"
+                        : "Oylik"
+                      : "Yo'q"
+                  }
+                />
+                <SettingMetric
+                  label="Muddati"
+                  value={
+                    client.stats.activeSubscription
+                      ? formatDate(client.stats.activeSubscription.endsAt)
+                      : "-"
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-white p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-electric-50 text-electric-600">
+                  <Gauge className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold">AI paket sarfi</div>
+                  <div className="text-xs text-slate-400">
+                    Bu oy ishlatilgan javoblar va qolgan limit
+                  </div>
+                </div>
+              </div>
+              <div className="mt-5 flex items-end justify-between gap-4">
+                <div>
+                  <div className="text-3xl font-extrabold">
+                    {used}
+                    <span className="text-base text-slate-300">
+                      {hasLimit ? ` / ${limit}` : " / cheksiz"}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    Qoldi: {client.stats.messageRemaining === null ? "cheksiz" : client.stats.messageRemaining}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-extrabold">
+                    {formatMoney(client.stats.messagePackagePrice)} {client.stats.messagePackageCurrency}
+                  </div>
+                  <div className="text-xs text-slate-400">kelishilgan paket narxi</div>
+                </div>
+              </div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#f1f5ff]">
+                <div
+                  className="h-full rounded-full bg-electric-500 transition-all"
+                  style={{ width: hasLimit ? `${progress}%` : "100%" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <section className="rounded-2xl border border-line bg-white p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-electric-500" />
+                <h3 className="font-extrabold">Tarifni sozlash</h3>
+              </div>
+              <PlanControl
+                client={client}
+                planDraft={planDraft}
+                cycleDraft={cycleDraft}
+                updating={updatingPlan}
+                onPlanChange={onPlanChange}
+                onCycleChange={onCycleChange}
+                onSave={onSavePlan}
+              />
+            </section>
+
+            <section className="rounded-2xl border border-line bg-white p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Bot className="h-4 w-4 text-electric-500" />
+                <h3 className="font-extrabold">AI xabar paketini sozlash</h3>
+              </div>
+              <PackageControl
+                client={client}
+                draft={packageDraft}
+                updating={updatingPackage}
+                onPatch={onPackagePatch}
+                onSave={onSavePackage}
+              />
+            </section>
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+            <section className="rounded-2xl border border-line bg-white p-5">
+              <h3 className="font-extrabold">Admin loginlari</h3>
+              <div className="mt-4 space-y-3">
+                {client.users.map((user) => (
+                  <div key={user.id} className="rounded-xl bg-[#f8faff] p-3">
+                    <div className="font-bold text-sm">{user.email}</div>
+                    <div className="mt-1 text-[11px] text-slate-400">
+                      {user.role === "CLIENT_ADMIN" ? "Mijoz admin" : "Owner"} · Login {user.loginCount} marta
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-400">
+                      Oxirgi kirish: {formatDateTime(user.lastLoginAt)}
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-400">IP: {user.lastLoginIp ?? "-"}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-line bg-white p-5">
+              <h3 className="font-extrabold">Kanallar va AI bazasi</h3>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <SettingTile label="Online kanal" value={`${client.stats.onlineChannels}/${client.stats.channels}`} />
+                <SettingTile label="Bilim" value={client.stats.knowledgeItems.toString()} />
+                <SettingTile label="FAQ" value={client.stats.faqs.toString()} />
+                <SettingTile label="Mahsulot" value={client.stats.catalogItems.toString()} />
+              </div>
+              <div className="mt-4 space-y-2 text-xs text-slate-500">
+                {client.channels.length === 0 ? (
+                  <div>Kanal ulanmagan</div>
+                ) : (
+                  client.channels.map((channel) => (
+                    <div key={channel.id} className="flex items-center justify-between gap-3 rounded-xl bg-[#f8faff] px-3 py-2">
+                      <span>{channelLabels[channel.type]} {channel.handle ?? ""}</span>
+                      <span className="font-bold">{channel.status}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-line bg-white p-5">
+              <h3 className="font-extrabold">Biznes statistikasi</h3>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <SettingTile label="Dialoglar" value={client.stats.conversations.toString()} />
+                <SettingTile label="Bu oy" value={client.stats.conversationsThisMonth.toString()} />
+                <SettingTile label="Arizalar" value={client.stats.requests.toString()} />
+                <SettingTile label="Automation" value={client.stats.automations.toString()} />
+              </div>
+              <div className="mt-4 rounded-xl bg-[#f8faff] p-3">
+                <div className="text-[11px] text-slate-400">To&apos;lov tushumi</div>
+                <div className="mt-1 text-lg font-extrabold">
+                  {formatMoney(client.stats.payments.paidAmount)} so&apos;m
+                </div>
+                <div className="mt-1 text-[11px] text-slate-400">
+                  Paid {client.stats.payments.paid} · Pending {client.stats.payments.pending}
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/10 px-4 py-3">
+      <div className="text-[11px] text-slate-300">{label}</div>
+      <div className="mt-1 text-lg font-extrabold">{value}</div>
+    </div>
+  );
+}
+
+function SettingTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-[#f8faff] p-3">
+      <div className="text-[11px] text-slate-400">{label}</div>
+      <div className="mt-1 text-lg font-extrabold">{value}</div>
+    </div>
   );
 }
 
