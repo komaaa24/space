@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { SessionMenu } from "@/components/session-menu";
 import { LogoMark } from "@/components/logo";
+import { SupportLink } from "@/components/support-link";
 
 type FeatureKey = "instagramAutomation" | "aiAgent" | "catalog" | "autoReply";
 
@@ -115,6 +116,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button className="hidden md:inline-flex items-center gap-1.5 text-[13px] font-semibold text-electric-600 bg-electric-50 hover:bg-electric-100 px-3.5 py-2 rounded-xl transition-colors">
             <Sparkles className="w-3.5 h-3.5" /> Agentni sinash
           </button>
+
+          <SupportLink className="hidden xl:inline-flex" />
 
           <button className="relative w-9 h-9 rounded-xl hover:bg-slate-50 flex items-center justify-center text-slate-400">
             <Bell className="w-4.5 h-4.5" />

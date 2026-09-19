@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Mail } from "lucide-react";
 import { LogoMark } from "@/components/logo";
+import { SupportLink } from "@/components/support-link";
 
 const googleErrorMessages: Record<string, string> = {
   google_not_configured: "Google kirish sozlanmagan",
@@ -146,6 +147,14 @@ function LoginContent() {
               Demo uchun ariza qoldiring
             </Link>
           </p>
+          <div className="mt-4">
+            <SupportLink
+              variant="card"
+              label="Kirishda yordam kerakmi?"
+              description="Login, Google yoki parol bo'yicha muammo bo'lsa, supportga yozing"
+              className="p-3"
+            />
+          </div>
         </div>
       </div>
     </div>

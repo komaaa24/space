@@ -14,6 +14,7 @@ import { DemoForm } from "@/components/landing/demo-form";
 import { HeroChatDemo } from "@/components/landing/hero-chat-demo";
 import { PricingSection } from "@/components/landing/pricing-section";
 import { LogoMark } from "@/components/logo";
+import { SupportLink } from "@/components/support-link";
 
 const steps = [
   {
@@ -82,8 +83,8 @@ export default function Landing() {
               Siz esa sotasiz.
             </h1>
             <p className="text-lg text-slate-500 mt-6 leading-relaxed">
-              Instagram, Telegram va YouTube'dagi har bir komment va DM'ga AI
-              agent siz kabi javob qaytaradi, leadlarni yig'adi va buyurtma
+              Instagram, Telegram va YouTube&apos;dagi har bir komment va DM&apos;ga AI
+              agent siz kabi javob qaytaradi, leadlarni yig&apos;adi va buyurtma
               rasmiylashtiradi — 24/7, 5 soniyada.
             </p>
             <div className="flex items-center gap-3 mt-9">
@@ -97,7 +98,7 @@ export default function Landing() {
                 href="/admin"
                 className="inline-flex items-center gap-2 border border-line hover:border-electric-300 font-bold px-7 py-3.5 rounded-2xl transition-colors"
               >
-                Panelni ko'rish
+                Panelni ko&apos;rish
               </Link>
             </div>
             <div className="flex items-center gap-6 mt-10 text-slate-400">
@@ -145,7 +146,7 @@ export default function Landing() {
             Bitta platforma — <span className="electric-text-gradient">barcha muloqot</span>
           </h2>
           <p className="text-slate-500 text-center mt-4 max-w-xl mx-auto">
-            Kech javob tufayli mijoz yo'qotish endi tarixda qoladi
+            Kech javob tufayli mijoz yo&apos;qotish endi tarixda qoladi
           </p>
 
           <div className="grid md:grid-cols-3 gap-4 mt-14">
@@ -162,7 +163,7 @@ export default function Landing() {
                 <p className="text-slate-400 mt-2 max-w-md leading-relaxed">
                   Bilimlar bazangizga tayanib har bir savolga aniq javob
                   beradi, katalog yuboradi, buyurtma rasmiylashtiradi va
-                  mijoz raqamini so'rab leadga aylantiradi.
+                  mijoz raqamini so&apos;rab leadga aylantiradi.
                 </p>
                 <div className="flex items-center gap-2 mt-6 flex-wrap">
                   {["Savol-javob", "Katalog yuborish", "Buyurtma", "Lead yig'ish"].map(
@@ -185,8 +186,8 @@ export default function Landing() {
               </span>
               <h3 className="font-bold text-lg mt-4">Leadlar avtopilotda</h3>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                Qiziqqan mijozlar raqami so'raladi va holatiga qarab saralanib,
-                arizalar bo'limiga tushadi.
+                Qiziqqan mijozlar raqami so&apos;raladi va holatiga qarab saralanib,
+                arizalar bo&apos;limiga tushadi.
               </p>
             </div>
 
@@ -196,8 +197,8 @@ export default function Landing() {
               </span>
               <h3 className="font-bold text-lg mt-4">Shikoyat va takliflar</h3>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                AI ularni ajratib alohida bo'limlarga saqlaydi — hech narsa
-                e'tibordan chetda qolmaydi.
+                AI ularni ajratib alohida bo&apos;limlarga saqlaydi — hech narsa
+                e&apos;tibordan chetda qolmaydi.
               </p>
             </div>
 
@@ -216,7 +217,7 @@ export default function Landing() {
               <span className="w-11 h-11 rounded-xl bg-electric-50 flex items-center justify-center">
                 <BarChart3 className="w-5.5 h-5.5 text-electric-600" />
               </span>
-              <h3 className="font-bold text-lg mt-4">To'liq analitika</h3>
+              <h3 className="font-bold text-lg mt-4">To&apos;liq analitika</h3>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed">
                 Dialoglar, javob vaqti, kanal statistikasi va intentlar — 7/30
                 kunlik kesimda.
@@ -264,7 +265,7 @@ export default function Landing() {
                 Bepul demo uchun ariza qoldiring
               </h2>
               <p className="text-electric-100 mt-3">
-                Jamoamiz platformani biznesingizga moslab ko'rsatib beradi
+                Jamoamiz platformani biznesingizga moslab ko&apos;rsatib beradi
               </p>
               <DemoForm />
             </div>
@@ -280,13 +281,14 @@ export default function Landing() {
             <span className="font-bold text-slate-600">chatspace</span>
           </div>
           <div>© 2026 Chatspace. Barcha huquqlar himoyalangan.</div>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-5">
             <Link href="/admin" className="hover:text-slate-600">
               Mijoz paneli
             </Link>
             <Link href="/owner" className="hover:text-slate-600">
               Boshqaruv
             </Link>
+            <SupportLink variant="subtle" />
           </div>
         </div>
       </footer>

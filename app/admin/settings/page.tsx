@@ -22,6 +22,7 @@ import {
   PrimaryButton,
   inputCls,
 } from "@/components/ui";
+import { SUPPORT_HANDLE, SupportLink } from "@/components/support-link";
 
 const sections = [
   { id: "company", label: "Kompaniya", icon: Building2 },
@@ -160,8 +161,13 @@ function AccountTab({ email }: { email: string }) {
     <>
       <SectionCard title="Akkaunt" subtitle={email}>
         <p className="text-xs text-slate-400">
-          Login (email) o&apos;zgartirish uchun Chatspace jamoasiga murojaat qiling.
+          Login (email) o&apos;zgartirish uchun {SUPPORT_HANDLE} ga yozing.
         </p>
+        <SupportLink
+          variant="card"
+          label="Chatspace support"
+          description="Email, tarif, to'lov yoki ulanish bo'yicha yordam beramiz"
+        />
       </SectionCard>
       <SectionCard title="Parol">
         <div className="grid md:grid-cols-2 gap-4">
@@ -569,8 +575,9 @@ export default function SettingsPage() {
                 const isCurrent = t.id === plan.toLowerCase();
                 const isYearly = billingCycle === "yearly";
                 const highlighted = t.id === "pro";
-                const monthlyPrice = isYearly ? t.yearlyMonthly : t.monthly;
+                const monthlyPrice = t.monthly;
                 const yearlyTotal = t.yearlyMonthly * 12;
+                const displayPrice = isYearly ? yearlyTotal : monthlyPrice;
                 const monthlyTotal = t.monthly * 12;
                 const savings = monthlyTotal - yearlyTotal;
                 const discount =
@@ -602,9 +609,11 @@ export default function SettingsPage() {
                       <div className="mt-5 min-h-[108px]">
                         <div className="flex items-baseline gap-1 transition-all duration-500">
                           <span className="text-[32px] font-extrabold tracking-tight tabular-nums">
-                            {formatMoney(monthlyPrice)}
+                            {formatMoney(displayPrice)}
                           </span>
-                          <span className="text-sm text-slate-400">so&apos;m/oy</span>
+                          <span className="text-sm text-slate-400">
+                            {isYearly ? "so'm/yil" : "so'm/oy"}
+                          </span>
                         </div>
                         <div
                           className={`mt-2 text-sm transition-all duration-500 ${
@@ -613,9 +622,11 @@ export default function SettingsPage() {
                               : "translate-y-1 opacity-60"
                           } ${highlighted ? "text-cyan-100" : "text-slate-500"}`}
                         >
-                          {t.monthly === 0
-                            ? "Yillik to'lov: 0 so'm"
-                            : `Yillik jami: ${formatMoney(yearlyTotal)} so'm`}
+                          {isYearly
+                            ? `Oyiga ${formatMoney(t.yearlyMonthly)} so'mdan`
+                            : t.monthly === 0
+                              ? "Boshlash uchun bepul"
+                              : `Yillik tanlasangiz ${formatMoney(savings)} so'm tejaysiz`}
                         </div>
                         {savings > 0 && (
                           <div
@@ -678,9 +689,9 @@ export default function SettingsPage() {
                         }`}
                       >
                         <div className="flex items-center justify-between gap-4">
-                          <span>{isYearly ? "Bugun to'lov" : "Oylik to'lov"}</span>
+                          <span>{isYearly ? "Yillik to'lov" : "Oylik to'lov"}</span>
                           <strong className="whitespace-nowrap text-base text-inherit">
-                            {formatMoney(isYearly ? yearlyTotal : monthlyPrice)} so&apos;m
+                            {formatMoney(displayPrice)} so&apos;m
                           </strong>
                         </div>
                       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PageTitle, PrimaryButton, inputCls } from "@/components/ui";
+import { SUPPORT_HANDLE, SupportLink } from "@/components/support-link";
 
 export default function OwnerSettingsPage() {
   const [email, setEmail] = useState("");
@@ -55,9 +56,14 @@ export default function OwnerSettingsPage() {
           </label>
           <input value={email} disabled className={inputCls} />
           <p className="text-xs text-slate-400 mt-1.5">
-            Login (email) o'zgartirish uchun Chatspace jamoasiga murojaat qiling.
+            Login (email) o&apos;zgartirish uchun {SUPPORT_HANDLE} ga yozing.
           </p>
         </div>
+        <SupportLink
+          variant="card"
+          label="Owner support"
+          description="Kabinetlar, tariflar yoki billing sozlamalari bo'yicha yordam"
+        />
       </div>
 
       <div className="rounded-2xl bg-white border border-line p-6 space-y-4">

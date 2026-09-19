@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { SessionMenu } from "@/components/session-menu";
 import { LogoMark } from "@/components/logo";
+import { SupportLink } from "@/components/support-link";
 
 const tabs = [
   { href: "/owner", label: "Boshqaruv", icon: LayoutGrid },
@@ -54,6 +55,8 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
           </span>
 
           <div className="flex-1" />
+
+          <SupportLink variant="dark" className="hidden lg:inline-flex" />
 
           <button className="relative w-9 h-9 rounded-xl hover:bg-white/5 flex items-center justify-center text-slate-400">
             <Bell className="w-4.5 h-4.5" />
