@@ -96,8 +96,9 @@ export function PricingSection() {
 
         <div className="grid md:grid-cols-3 gap-5 mt-14 items-stretch">
           {plans.map((plan) => {
-            const monthlyPrice = isYearly ? plan.yearlyMonthly : plan.monthly;
+            const monthlyPrice = plan.monthly;
             const yearlyTotal = plan.yearlyMonthly * 12;
+            const displayPrice = isYearly ? yearlyTotal : monthlyPrice;
             const monthlyTotal = plan.monthly * 12;
             const savings = monthlyTotal - yearlyTotal;
             const discount =
@@ -130,20 +131,24 @@ export function PricingSection() {
                   <div className="mt-5 min-h-[92px]">
                     <div className="flex items-baseline gap-1 transition-all duration-500">
                       <span className="text-[34px] font-extrabold tracking-tight tabular-nums">
-                        {formatMoney(monthlyPrice)}
+                        {formatMoney(displayPrice)}
                       </span>
-                      <span className="text-sm text-slate-400">so&apos;m/oy</span>
+                      <span className="text-sm text-slate-400">
+                        {isYearly ? "so'm/yil" : "so'm/oy"}
+                      </span>
                     </div>
                     <div
                       className={`mt-2 text-sm transition-all duration-500 ${
                         isYearly
                           ? "translate-y-0 opacity-100"
-                          : "translate-y-1 opacity-0"
+                          : "translate-y-1 opacity-60"
                       } ${highlighted ? "text-cyan-100" : "text-slate-500"}`}
                     >
-                      {plan.monthly === 0
-                        ? "Yillik to'lov: 0 so'm"
-                        : `Yillik jami: ${formatMoney(yearlyTotal)} so'm`}
+                      {isYearly
+                        ? `Oyiga ${formatMoney(plan.yearlyMonthly)} so'mdan`
+                        : plan.monthly === 0
+                          ? "Boshlash uchun bepul"
+                          : `Yillik tanlasangiz ${formatMoney(savings)} so'm tejaysiz`}
                     </div>
                     {isYearly && savings > 0 && (
                       <div
@@ -212,9 +217,9 @@ export function PricingSection() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <span>{isYearly ? "Bugun to'lov" : "Oylik to'lov"}</span>
+                      <span>{isYearly ? "Yillik to'lov" : "Oylik to'lov"}</span>
                       <strong className="whitespace-nowrap text-base text-inherit">
-                        {formatMoney(isYearly ? yearlyTotal : monthlyPrice)} so&apos;m
+                        {formatMoney(displayPrice)} so&apos;m
                       </strong>
                     </div>
                   </div>
