@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   CalendarDays,
   Gauge,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge, PageTitle, PrimaryButton, inputCls } from "@/components/ui";
 
@@ -180,6 +182,7 @@ export default function OwnerClientsPage() {
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null);
   const [packageDrafts, setPackageDrafts] = useState<Record<string, PackageDraft>>({});
   const [updatingPackageId, setUpdatingPackageId] = useState<string | null>(null);
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   async function load() {
@@ -348,6 +351,45 @@ export default function OwnerClientsPage() {
     }
   }
 
+  async function deleteClient(client: ApiClient) {
+    if (deletingClientId) return;
+
+    setDeletingClientId(client.id);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/owner/clients/${client.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setActionError(data?.error ?? "Kabinetni o'chirib bo'lmadi");
+        return;
+      }
+
+      setSettingsClientId(null);
+      setClients((items) => items.filter((item) => item.id !== client.id));
+      setPlanDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[client.id];
+        return next;
+      });
+      setCycleDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[client.id];
+        return next;
+      });
+      setPackageDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[client.id];
+        return next;
+      });
+    } catch {
+      setActionError("Serverga ulanib bo'lmadi");
+    } finally {
+      setDeletingClientId(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageTitle
@@ -469,6 +511,7 @@ export default function OwnerClientsPage() {
           packageDraft={getPackageDraft(settingsClient)}
           updatingPlan={updatingPlanId === settingsClient.id}
           updatingPackage={updatingPackageId === settingsClient.id}
+          deletingClient={deletingClientId === settingsClient.id}
           resettingPassword={resettingId === settingsClient.id}
           onClose={() => setSettingsClientId(null)}
           onPlanChange={(value) =>
@@ -480,6 +523,7 @@ export default function OwnerClientsPage() {
           onPackagePatch={(patch) => patchPackageDraft(settingsClient.id, patch)}
           onSavePlan={() => updateClientPlan(settingsClient.id)}
           onSavePackage={() => updateMessagePackage(settingsClient)}
+          onDelete={() => deleteClient(settingsClient)}
           onResetPassword={() => resetPassword(settingsClient.id)}
         />
       )}
@@ -705,6 +749,7 @@ function ClientSettingsModal({
   packageDraft,
   updatingPlan,
   updatingPackage,
+  deletingClient,
   resettingPassword,
   onClose,
   onPlanChange,
@@ -712,6 +757,7 @@ function ClientSettingsModal({
   onPackagePatch,
   onSavePlan,
   onSavePackage,
+  onDelete,
   onResetPassword,
 }: {
   client: ApiClient;
@@ -720,6 +766,7 @@ function ClientSettingsModal({
   packageDraft: PackageDraft;
   updatingPlan: boolean;
   updatingPackage: boolean;
+  deletingClient: boolean;
   resettingPassword: boolean;
   onClose: () => void;
   onPlanChange: (value: ApiClient["plan"]) => void;
@@ -727,12 +774,15 @@ function ClientSettingsModal({
   onPackagePatch: (patch: Partial<PackageDraft>) => void;
   onSavePlan: () => void;
   onSavePackage: () => void;
+  onDelete: () => void;
   onResetPassword: () => void;
 }) {
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const hasLimit = client.stats.messageMonthlyLimit !== null;
   const limit = client.stats.messageMonthlyLimit ?? 0;
   const used = client.stats.aiMessagesThisMonth;
   const progress = hasLimit && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const canDelete = deleteConfirm.trim() === client.company;
 
   return (
     <div className="fixed inset-0 z-50 bg-navy-900/65 backdrop-blur-sm p-4 md:p-6">
@@ -945,6 +995,47 @@ function ClientSettingsModal({
               </div>
             </section>
           </div>
+
+          <section className="mt-4 rounded-2xl border border-red-100 bg-red-50/40 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-red-700">Kabinetni o&apos;chirish</h3>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-red-600/80">
+                    Bu amal kabinet adminlari, kanallar, inbox yozishmalari, arizalar,
+                    katalog, AI bazasi, avtomatizatsiyalar va to&apos;lov yozuvlarini butunlay
+                    ro&apos;yxatdan o&apos;chiradi. Qaytarib bo&apos;lmaydi.
+                  </p>
+                </div>
+              </div>
+              <div className="w-full space-y-2 lg:max-w-sm">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-red-500">
+                  Tasdiqlash uchun kompaniya nomini yozing
+                </label>
+                <input
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder={client.company}
+                  className="w-full rounded-xl border border-red-100 bg-white px-3 py-2.5 text-sm font-semibold outline-none transition-colors placeholder:text-red-200 focus:border-red-300 focus:ring-2 focus:ring-red-100"
+                />
+                <button
+                  onClick={onDelete}
+                  disabled={!canDelete || deletingClient}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 py-2.5 text-xs font-extrabold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {deletingClient ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Kabinetni butunlay o&apos;chirish
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>

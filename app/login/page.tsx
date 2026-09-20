@@ -13,7 +13,7 @@ const googleErrorMessages: Record<string, string> = {
   google_invalid_state: "Google sessiyasi eskirdi, qayta urinib ko'ring",
   google_token_failed: "Google token olinmadi",
   google_email_unverified: "Google email tasdiqlanmagan",
-  google_user_not_found: "Bu Google email uchun kabinet topilmadi",
+  google_user_not_found: "Bu Google email bilan kabinet ochib bo'lmadi",
 };
 
 function LoginContent() {
