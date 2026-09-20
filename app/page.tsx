@@ -288,6 +288,15 @@ export default function Landing() {
             <Link href="/owner" className="hover:text-slate-600">
               Boshqaruv
             </Link>
+            <Link href="/privacy" className="hover:text-slate-600">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-slate-600">
+              Terms
+            </Link>
+            <Link href="/data-deletion" className="hover:text-slate-600">
+              Data deletion
+            </Link>
             <SupportLink variant="subtle" />
           </div>
         </div>
