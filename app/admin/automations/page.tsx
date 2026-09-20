@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   Zap,
   Workflow,
-  Lock,
 } from "lucide-react";
 import { Badge, PageTitle, PrimaryButton, inputCls } from "@/components/ui";
 
@@ -72,7 +71,7 @@ interface Analytics {
 
 interface AccessData {
   plan: "FREE" | "PRO" | "VIP";
-  features: { autoReply: boolean; instagramAutomation: boolean };
+  features: { instagramAutomation: boolean };
   usage: {
     automationUsedThisMonth: number;
     automationMonthlyLimit: number | null;
@@ -121,7 +120,6 @@ export default function AutomationsPage() {
   const [showSimpleForm, setShowSimpleForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [step, setStep] = useState(1);
-  const [kind, setKind] = useState<AutomationKind>("LEAD_FLOW");
   const [form, setForm] = useState(emptyForm);
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
@@ -166,11 +164,8 @@ export default function AutomationsPage() {
     setShowTemplatePicker(true);
   }
 
-  const autoReplyLocked = access ? !access.features.autoReply : false;
-
   function chooseTemplate(selectedKind: AutomationKind) {
     setShowTemplatePicker(false);
-    setKind(selectedKind);
     setForm({ ...emptyForm, channelId: channels[0]?.id ?? "" });
     setStep(1);
     setError(null);
@@ -183,7 +178,6 @@ export default function AutomationsPage() {
 
   function openEdit(a: AutomationDb) {
     setEditingId(a.id);
-    setKind(a.kind);
     setForm({
       name: a.name,
       channelId: a.channel.id,
@@ -474,25 +468,14 @@ export default function AutomationsPage() {
             </button>
 
             <button
-              onClick={() => !autoReplyLocked && chooseTemplate("AUTO_REPLY")}
-              disabled={autoReplyLocked}
-              className={`w-full flex items-start gap-3.5 rounded-2xl border border-line transition-all p-4 text-left ${
-                autoReplyLocked
-                  ? "opacity-55 cursor-not-allowed"
-                  : "hover:border-electric-300 hover:shadow-[0_8px_24px_rgba(15,94,255,0.08)]"
-              }`}
+              onClick={() => chooseTemplate("AUTO_REPLY")}
+              className="w-full flex items-start gap-3.5 rounded-2xl border border-line hover:border-electric-300 hover:shadow-[0_8px_24px_rgba(15,94,255,0.08)] transition-all p-4 text-left"
             >
               <div className="w-11 h-11 rounded-xl bg-electric-50 flex items-center justify-center shrink-0">
-                {autoReplyLocked ? (
-                  <Lock className="w-5.5 h-5.5 text-electric-600" />
-                ) : (
-                  <Zap className="w-5.5 h-5.5 text-electric-600" />
-                )}
+                <Zap className="w-5.5 h-5.5 text-electric-600" />
               </div>
               <div>
-                <div className="font-bold text-sm">
-                  Avtojavob {autoReplyLocked && <span className="text-electric-600">(VIP)</span>}
-                </div>
+                <div className="font-bold text-sm">Avtojavob</div>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                   Sodda: DM'ga kalit so'z yoki istalgan xabar yozilsa, bitta oddiy avtomatik javob
                   yuboriladi. Obuna tekshirilmaydi, tugma yo'q.

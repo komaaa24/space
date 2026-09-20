@@ -11,8 +11,8 @@ export async function PATCH(
   if (!session?.clientId) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 401 });
   }
-  if (!(await canUseFeature(session.clientId, "autoReply"))) {
-    return forbiddenByPlan("Avtojavob faqat VIP tarifda ochiq");
+  if (!(await canUseFeature(session.clientId, "aiAgent"))) {
+    return forbiddenByPlan("AI Studio faqat VIP tarifda ochiq");
   }
 
   const { id } = await params;
@@ -37,8 +37,8 @@ export async function DELETE(
   if (!session?.clientId) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 401 });
   }
-  if (!(await canUseFeature(session.clientId, "autoReply"))) {
-    return forbiddenByPlan("Avtojavob faqat VIP tarifda ochiq");
+  if (!(await canUseFeature(session.clientId, "aiAgent"))) {
+    return forbiddenByPlan("AI Studio faqat VIP tarifda ochiq");
   }
 
   const { id } = await params;

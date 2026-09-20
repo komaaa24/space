@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { canUseFeature, forbiddenByPlan } from "@/lib/access-control";
 
 export async function PATCH(
   req: Request,
@@ -17,10 +16,6 @@ export async function PATCH(
   if (!automation || automation.clientId !== session.clientId) {
     return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
   }
-  if (automation.kind === "AUTO_REPLY" && !(await canUseFeature(session.clientId, "autoReply"))) {
-    return forbiddenByPlan("Avtojavob faqat VIP tarifda ochiq");
-  }
-
   const body = await req.json().catch(() => null);
   const data: Record<string, unknown> = {};
 

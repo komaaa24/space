@@ -23,7 +23,7 @@ export const PLAN_RULES: Record<
       instagramAutomation: true,
       aiAgent: false,
       catalog: false,
-      autoReply: false,
+      autoReply: true,
     },
   },
   PRO: {
@@ -35,7 +35,7 @@ export const PLAN_RULES: Record<
       instagramAutomation: true,
       aiAgent: false,
       catalog: false,
-      autoReply: false,
+      autoReply: true,
     },
   },
   VIP: {

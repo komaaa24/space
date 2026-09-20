@@ -14,6 +14,7 @@ const plans = [
     badge: "",
     features: [
       { label: "Instagram Automation: 200 dialog/oy", included: true },
+      { label: "Avtojavob ochiq", included: true },
       { label: "AI Agent yopiq", included: false },
       { label: "Katalog yopiq", included: false },
     ],
@@ -26,6 +27,7 @@ const plans = [
     badge: "Ommabop",
     features: [
       { label: "Instagram Automation cheksiz", included: true },
+      { label: "Avtojavob ochiq", included: true },
       { label: "AI Agent yopiq", included: false },
       { label: "Katalog yopiq", included: false },
     ],
@@ -38,6 +40,7 @@ const plans = [
     badge: "",
     features: [
       { label: "Instagram Automation cheksiz", included: true },
+      { label: "Avtojavob ochiq", included: true },
       { label: "AI Agent ochiq", included: true },
       { label: "Katalog ochiq", included: true },
     ],

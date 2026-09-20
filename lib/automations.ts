@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/env";
-import { canStartAutomation, canUseFeature } from "@/lib/access-control";
+import { canStartAutomation } from "@/lib/access-control";
 import {
   checkIsFollowing,
   replyToComment,
@@ -102,9 +102,6 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
 
   const matched = automations.find((a) => textMatches(a, text));
   if (!matched) return false;
-  if (matched.kind === "AUTO_REPLY" && !(await canUseFeature(channel.clientId, "autoReply"))) {
-    return false;
-  }
 
   if (matched.kind === "AUTO_REPLY") {
     await sendSimpleAutoReply(matched, contactId, accessToken, { recipientId: contactId });
@@ -157,9 +154,6 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
 
   const matched = automations.find((a) => textMatches(a, text) && mediaMatches(a, mediaId));
   if (!matched) return false;
-  if (matched.kind === "AUTO_REPLY" && !(await canUseFeature(channel.clientId, "autoReply"))) {
-    return false;
-  }
 
   if (matched.publicReplyEnabled) {
     const variants = Array.isArray(matched.publicReplyVariants)

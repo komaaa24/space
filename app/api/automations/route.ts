@@ -39,10 +39,6 @@ export async function POST(req: Request) {
   if (!(await canUseFeature(session.clientId, "instagramAutomation"))) {
     return forbiddenByPlan("Instagram Automation joriy tarifingizda yopiq");
   }
-  if (kind === "AUTO_REPLY" && !(await canUseFeature(session.clientId, "autoReply"))) {
-    return forbiddenByPlan("Avtojavob faqat VIP tarifda ochiq");
-  }
-
   const channel = await prisma.channel.findUnique({ where: { id: channelId } });
   if (!channel || channel.clientId !== session.clientId) {
     return NextResponse.json({ error: "Kanal topilmadi" }, { status: 404 });

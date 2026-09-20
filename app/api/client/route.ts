@@ -63,9 +63,6 @@ export async function PATCH(req: Request) {
     data.workHoursEnd = body.workHoursEnd;
   }
   if (["ALWAYS", "AUTO_REPLY", "SILENT"].includes(body?.afterHoursMode)) {
-    if (body.afterHoursMode === "AUTO_REPLY" && !(await canUseFeature(session.clientId, "autoReply"))) {
-      return forbiddenByPlan("Avtojavob faqat VIP tarifda ochiq");
-    }
     data.afterHoursMode = body.afterHoursMode;
   }
 

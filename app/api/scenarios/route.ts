@@ -20,8 +20,8 @@ export async function POST(req: Request) {
   if (!session?.clientId) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 401 });
   }
-  if (!(await canUseFeature(session.clientId, "autoReply"))) {
-    return forbiddenByPlan("Avtojavob faqat VIP tarifda ochiq");
+  if (!(await canUseFeature(session.clientId, "aiAgent"))) {
+    return forbiddenByPlan("AI Studio faqat VIP tarifda ochiq");
   }
 
   const body = await req.json().catch(() => null);
