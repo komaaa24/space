@@ -13,7 +13,7 @@ const plans = [
     yearlyMonthly: 0,
     badge: "",
     features: [
-      { label: "Instagram Automation: 200 dialog/oy", included: true },
+      { label: "Instagram Automation: 200 odam/oy", included: true },
       { label: "Avtojavob ochiq", included: true },
       { label: "AI Agent yopiq", included: false },
       { label: "Katalog yopiq", included: false },

@@ -71,6 +71,7 @@ function verifyInstagramSignature(req: Request, rawBody: string) {
 export async function POST(req: Request) {
   const rawBody = await req.text();
   if (!verifyInstagramSignature(req, rawBody)) {
+    console.warn("[instagram webhook] invalid signature");
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -80,7 +81,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: true });
   }
-  if (!body || body.object !== "instagram") {
+  if (!body || (body.object !== "instagram" && body.object !== "instagram_business_account")) {
+    console.info("[instagram webhook] ignored object", { object: body?.object });
     return NextResponse.json({ ok: true });
   }
 
@@ -89,6 +91,10 @@ export async function POST(req: Request) {
       if (!event.message?.text || event.message.is_echo) continue;
 
       try {
+        console.info("[instagram webhook] DM qabul qilindi", {
+          recipientId: event.recipient.id,
+          senderId: event.sender.id,
+        });
         const channel =
           (await prisma.channel.findFirst({
             where: { type: "INSTAGRAM", externalAccountId: event.recipient.id },
@@ -96,7 +102,12 @@ export async function POST(req: Request) {
           (await prisma.channel.findFirst({
             where: { type: "INSTAGRAM", credential: { contains: event.recipient.id } },
           }));
-        if (!channel?.credential) continue;
+        if (!channel?.credential) {
+          console.warn("[instagram webhook] DM uchun kanal topilmadi", {
+            recipientId: event.recipient.id,
+          });
+          continue;
+        }
 
         const { accessToken } = parseInstagramCredential(channel.credential);
 
@@ -133,6 +144,11 @@ export async function POST(req: Request) {
       if (!text || !from?.id || !media?.id) continue;
 
       try {
+        console.info("[instagram webhook] Komment qabul qilindi", {
+          accountId: entry.id,
+          commentId,
+          senderId: from.id,
+        });
         // entry.id — akkauntning IG User ID'i (comment webhooklarida
         // recipient bo'lmagani uchun shu orqali kanalni aniqlaymiz)
         const channel =
@@ -142,7 +158,12 @@ export async function POST(req: Request) {
           (await prisma.channel.findFirst({
             where: { type: "INSTAGRAM", credential: { contains: entry.id } },
           }));
-        if (!channel?.credential) continue;
+        if (!channel?.credential) {
+          console.warn("[instagram webhook] Komment uchun kanal topilmadi", {
+            accountId: entry.id,
+          });
+          continue;
+        }
 
         const { accessToken } = parseInstagramCredential(channel.credential);
 

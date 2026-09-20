@@ -143,6 +143,7 @@ export async function sendInstagramMessage(
   const data = await res.json();
   if (!res.ok || data.error) {
     console.error("Instagram xabar yuborishda xatolik:", data.error);
+    throw new Error(data.error?.message ?? "Instagram xabar yuborishda xatolik");
   }
 }
 
@@ -195,6 +196,7 @@ export async function replyToComment(accessToken: string, commentId: string, tex
   const data = await res.json();
   if (!res.ok || data.error) {
     console.error("Kommentga javob yozishda xatolik:", data.error);
+    throw new Error(data.error?.message ?? "Kommentga javob yozishda xatolik");
   }
 }
 
@@ -229,6 +231,7 @@ export async function sendPrivateReplyToComment(
   const data = await res.json();
   if (!res.ok || data.error) {
     console.error("Kommentga maxfiy javob yuborishda xatolik:", data.error);
+    throw new Error(data.error?.message ?? "Kommentga maxfiy javob yuborishda xatolik");
   }
   return data as { recipient_id?: string; error?: unknown };
 }
@@ -260,6 +263,7 @@ export async function sendInstagramQuickReply(
   const data = await res.json();
   if (!res.ok || data.error) {
     console.error("Instagram quick-reply yuborishda xatolik:", data.error);
+    throw new Error(data.error?.message ?? "Instagram quick-reply yuborishda xatolik");
   }
 }
 

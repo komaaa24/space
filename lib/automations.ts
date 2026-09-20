@@ -77,7 +77,10 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     where: { id: channelId },
     select: { clientId: true },
   });
-  if (!channel) return false;
+  if (!channel) {
+    console.warn("[automation] DM channel topilmadi", { channelId });
+    return false;
+  }
 
   const existingRun = await prisma.automationRun.findFirst({
     where: {
@@ -93,18 +96,36 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     return true;
   }
 
-  const access = await canStartAutomation(channel.clientId);
-  if (!access.allowed) return false;
+  const access = await canStartAutomation(channel.clientId, contactId);
+  if (!access.allowed) {
+    console.warn("[automation] DM limit/tarif blokladi", {
+      clientId: channel.clientId,
+      contactId,
+      reason: access.reason,
+    });
+    return false;
+  }
 
   const automations = (await prisma.automation.findMany({
     where: { channelId, active: true, triggerOnDm: true },
   })) as unknown as AutomationRecord[];
 
   const matched = automations.find((a) => textMatches(a, text));
-  if (!matched) return false;
+  if (!matched) {
+    console.info("[automation] DM automation mos kelmadi", {
+      channelId,
+      contactId,
+      activeDmAutomations: automations.length,
+    });
+    return false;
+  }
 
   if (matched.kind === "AUTO_REPLY") {
     await sendSimpleAutoReply(matched, contactId, accessToken, { recipientId: contactId });
+    console.info("[automation] DM avtojavob yuborildi", {
+      automationId: matched.id,
+      contactId,
+    });
     return true;
   }
 
@@ -119,7 +140,10 @@ async function sendSimpleAutoReply(
   accessToken: string,
   recipient: Recipient,
 ) {
-  if (!automation.replyMessage) return;
+  if (!automation.replyMessage) {
+    console.warn("[automation] Avtojavob matni bo'sh", { automationId: automation.id });
+    return;
+  }
   await sendToRecipient(accessToken, recipient, automation.replyMessage);
   await prisma.automationRun.upsert({
     where: { automationId_contactId: { automationId: automation.id, contactId } },
@@ -143,17 +167,34 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
     where: { id: channelId },
     select: { clientId: true },
   });
-  if (!channel) return false;
+  if (!channel) {
+    console.warn("[automation] Komment channel topilmadi", { channelId });
+    return false;
+  }
 
-  const access = await canStartAutomation(channel.clientId);
-  if (!access.allowed) return false;
+  const access = await canStartAutomation(channel.clientId, contactId);
+  if (!access.allowed) {
+    console.warn("[automation] Komment limit/tarif blokladi", {
+      clientId: channel.clientId,
+      contactId,
+      reason: access.reason,
+    });
+    return false;
+  }
 
   const automations = (await prisma.automation.findMany({
     where: { channelId, active: true, triggerOnComment: true },
   })) as unknown as AutomationRecord[];
 
   const matched = automations.find((a) => textMatches(a, text) && mediaMatches(a, mediaId));
-  if (!matched) return false;
+  if (!matched) {
+    console.info("[automation] Komment automation mos kelmadi", {
+      channelId,
+      contactId,
+      activeCommentAutomations: automations.length,
+    });
+    return false;
+  }
 
   if (matched.publicReplyEnabled) {
     const variants = Array.isArray(matched.publicReplyVariants)

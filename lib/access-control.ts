@@ -82,7 +82,7 @@ export async function getClientAccess(clientId: string) {
   const plan = await getActivePlan(clientId);
   const rules = PLAN_RULES[plan];
   const monthStart = getMonthStart();
-  const [client, automationUsedThisMonth, aiMessagesUsedThisMonth] = await Promise.all([
+  const [client, automationContactsThisMonth, aiMessagesUsedThisMonth] = await Promise.all([
     prisma.client.findUnique({
       where: { id: clientId },
       select: {
@@ -92,11 +92,13 @@ export async function getClientAccess(clientId: string) {
         messagePackageNote: true,
       },
     }),
-    prisma.automationRun.count({
+    prisma.automationRun.findMany({
       where: {
         createdAt: { gte: monthStart },
         automation: { clientId },
       },
+      distinct: ["contactId"],
+      select: { contactId: true },
     }),
     prisma.message.count({
       where: {
@@ -106,6 +108,7 @@ export async function getClientAccess(clientId: string) {
       },
     }),
   ]);
+  const automationUsedThisMonth = automationContactsThisMonth.length;
   const automationRemaining =
     rules.automationMonthlyLimit === null
       ? null
@@ -139,7 +142,7 @@ export async function canUseFeature(clientId: string, feature: FeatureKey) {
   return access.features[feature];
 }
 
-export async function canStartAutomation(clientId: string) {
+export async function canStartAutomation(clientId: string, contactId?: string) {
   const access = await getClientAccess(clientId);
   if (!access.features.instagramAutomation) {
     return { allowed: false, reason: "Tarifingizda Instagram Automation yopiq", access };
@@ -148,9 +151,24 @@ export async function canStartAutomation(clientId: string) {
     access.usage.automationMonthlyLimit !== null &&
     access.usage.automationUsedThisMonth >= access.usage.automationMonthlyLimit
   ) {
+    const contactAlreadyCounted = contactId
+      ? await prisma.automationRun.findFirst({
+          where: {
+            contactId,
+            createdAt: { gte: getMonthStart() },
+            automation: { clientId },
+          },
+          select: { id: true },
+        })
+      : null;
+
+    if (contactAlreadyCounted) {
+      return { allowed: true, reason: null, access };
+    }
+
     return {
       allowed: false,
-      reason: "FREE tarif uchun oylik 200 ta automation dialog limiti tugagan",
+      reason: "FREE tarif uchun oylik 200 ta odam limiti tugagan",
       access,
     };
   }

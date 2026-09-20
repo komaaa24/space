@@ -339,7 +339,7 @@ export default function AutomationsPage() {
           <div>
             <div className="text-sm font-bold">FREE automation limiti</div>
             <div className="text-xs text-slate-400 mt-0.5">
-              Bu oy {access.usage.automationUsedThisMonth}/{access.usage.automationMonthlyLimit} dialog ishlatilgan
+              Bu oy {access.usage.automationUsedThisMonth}/{access.usage.automationMonthlyLimit} odam ishlatilgan
             </div>
           </div>
           <Badge color={access.usage.automationRemaining === 0 ? "red" : "blue"}>
