@@ -39,10 +39,10 @@ export default function Landing() {
     <div className="bg-white text-[#0b1226]">
       {/* Nav */}
       <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-lg border-b border-line">
-        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <LogoMark className="w-14 h-14" />
-            <span className="font-extrabold text-2xl tracking-tight">
+            <LogoMark className="w-11 h-11 sm:w-14 sm:h-14" />
+            <span className="font-extrabold text-xl tracking-tight sm:text-2xl">
               chatspace
             </span>
           </div>
@@ -60,7 +60,7 @@ export default function Landing() {
             </Link>
             <a
               href="#cta"
-              className="text-sm font-semibold bg-electric-500 hover:bg-electric-600 text-white px-4 py-2.5 rounded-xl transition-colors shadow-[0_4px_14px_rgba(15,94,255,0.3)]"
+              className="hidden text-sm font-semibold bg-electric-500 hover:bg-electric-600 text-white px-4 py-2.5 rounded-xl transition-colors shadow-[0_4px_14px_rgba(15,94,255,0.3)] sm:inline-flex"
             >
               Demo olish
             </a>
@@ -69,39 +69,39 @@ export default function Landing() {
       </header>
 
       {/* Hero — left aligned, split layout */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,rgba(15,94,255,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)]">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-electric-500/5 rounded-full blur-3xl -translate-y-1/3 translate-x-1/4" />
-        <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 grid lg:grid-cols-2 gap-14 items-center relative">
-          <div>
-            <div className="inline-flex items-center gap-2 border border-electric-200 bg-electric-50 text-electric-600 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pb-16 pt-10 sm:px-6 sm:pb-20 sm:pt-14 lg:min-h-[680px] lg:grid-cols-[0.92fr_1.08fr] lg:gap-16 lg:pb-24 lg:pt-20">
+          <div className="text-center lg:text-left">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-electric-200 bg-electric-50 px-3 py-1.5 text-xs font-semibold text-electric-600">
               <Sparkles className="w-3.5 h-3.5" />
               Savdo uchun AI agent platformasi
             </div>
-            <h1 className="text-4xl md:text-[56px] font-extrabold tracking-tight leading-[1.05]">
+            <h1 className="text-[40px] font-extrabold leading-[1.02] tracking-tight sm:text-5xl lg:text-[68px]">
               Mijozlaringizga{" "}
               <span className="electric-text-gradient">AI javob beradi.</span>{" "}
               Siz esa sotasiz.
             </h1>
-            <p className="text-lg text-slate-500 mt-6 leading-relaxed">
+            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-500 sm:text-lg lg:mx-0">
               Instagram, Telegram va YouTube&apos;dagi har bir komment va DM&apos;ga AI
               agent siz kabi javob qaytaradi, leadlarni yig&apos;adi va buyurtma
               rasmiylashtiradi — 24/7, 5 soniyada.
             </p>
-            <div className="flex items-center gap-3 mt-9">
+            <div className="mt-8 flex flex-col items-stretch gap-3 sm:mt-9 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
               <a
                 href="#cta"
-                className="inline-flex items-center gap-2 bg-electric-500 hover:bg-electric-600 text-white font-bold px-7 py-3.5 rounded-2xl transition-colors shadow-[0_8px_24px_rgba(15,94,255,0.35)]"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-electric-500 px-7 py-3.5 font-bold text-white shadow-[0_8px_24px_rgba(15,94,255,0.35)] transition-colors hover:bg-electric-600"
               >
                 Bepul demo olish <ArrowRight className="w-4 h-4" />
               </a>
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-2 border border-line hover:border-electric-300 font-bold px-7 py-3.5 rounded-2xl transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-line px-7 py-3.5 font-bold transition-colors hover:border-electric-300"
               >
                 Panelni ko&apos;rish
               </Link>
             </div>
-            <div className="flex items-center gap-6 mt-10 text-slate-400">
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-4 text-slate-400 sm:gap-6 lg:justify-start">
               <span className="text-xs font-semibold uppercase tracking-wider">
                 Ulanadi:
               </span>
@@ -123,14 +123,14 @@ export default function Landing() {
 
       {/* Stats band */}
       <section className="border-y border-line bg-[#fafbff]">
-        <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-3 gap-6 text-center">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-4 py-8 text-center sm:grid-cols-3 sm:px-6 sm:py-10">
           {[
             ["5 soniya", "o'rtacha javob vaqti"],
             ["24/7", "tunu-kun ishlaydi"],
             ["0 ta", "o'tkazib yuborilgan xabar"],
           ].map(([v, l]) => (
             <div key={l}>
-              <div className="text-3xl font-extrabold electric-text-gradient">
+              <div className="text-2xl font-extrabold electric-text-gradient sm:text-3xl">
                 {v}
               </div>
               <div className="text-sm text-slate-400 mt-1">{l}</div>
@@ -140,16 +140,16 @@ export default function Landing() {
       </section>
 
       {/* Features — bento grid */}
-      <section id="features" className="py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl md:text-[40px] font-extrabold tracking-tight text-center">
+      <section id="features" className="py-16 sm:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <h2 className="text-center text-3xl font-extrabold tracking-tight md:text-[40px]">
             Bitta platforma — <span className="electric-text-gradient">barcha muloqot</span>
           </h2>
           <p className="text-slate-500 text-center mt-4 max-w-xl mx-auto">
             Kech javob tufayli mijoz yo&apos;qotish endi tarixda qoladi
           </p>
 
-          <div className="grid md:grid-cols-3 gap-4 mt-14">
+          <div className="mt-10 grid gap-4 md:grid-cols-3 sm:mt-14">
             {/* Big card */}
             <div className="md:col-span-2 rounded-3xl bg-navy-900 text-white p-8 relative overflow-hidden">
               <div className="absolute inset-0 dot-grid opacity-10" />
@@ -228,8 +228,8 @@ export default function Landing() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="py-24 bg-[#fafbff] border-y border-line">
-        <div className="max-w-6xl mx-auto px-6">
+      <section id="how" className="py-16 bg-[#fafbff] border-y border-line sm:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <h2 className="text-3xl md:text-[40px] font-extrabold tracking-tight text-center">
             3 qadamda ishga tushadi
           </h2>
@@ -255,8 +255,8 @@ export default function Landing() {
       <PricingSection />
 
       {/* CTA */}
-      <section id="cta" className="pb-24">
-        <div className="max-w-4xl mx-auto px-6">
+      <section id="cta" className="pb-16 sm:pb-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="rounded-[32px] electric-gradient text-white p-10 md:p-16 text-center relative overflow-hidden">
             <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-white/10" />
             <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-white/10" />
@@ -275,7 +275,7 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-line py-10">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-400">
           <div className="flex items-center gap-2">
             <LogoMark className="w-7 h-7" />
             <span className="font-bold text-slate-600">chatspace</span>

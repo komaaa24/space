@@ -62,7 +62,13 @@ export function LogoMark({
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
     >
-      <svg viewBox="0 0 512 512" role="img" focusable="false">
+      <svg
+        viewBox="0 0 512 512"
+        width="1em"
+        height="1em"
+        role="img"
+        focusable="false"
+      >
         <defs>
           <linearGradient
             id="chatspace-logo-gradient"

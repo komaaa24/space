@@ -83,6 +83,19 @@ body {
   animation: hero-chat-float 6s ease-in-out infinite;
 }
 
+.hero-phone-float {
+  animation: hero-phone-float 7s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.hero-phone-delay-1 {
+  animation-delay: 900ms;
+}
+
+.hero-phone-delay-2 {
+  animation-delay: 1500ms;
+}
+
 .hero-chat-thread {
   display: grid;
   gap: 12px;
@@ -152,6 +165,16 @@ body {
   }
   50% {
     transform: translateY(-5px);
+  }
+}
+
+@keyframes hero-phone-float {
+  0%,
+  100% {
+    margin-top: 0;
+  }
+  50% {
+    margin-top: -10px;
   }
 }
 
@@ -368,6 +391,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .hero-chat-panel,
+  .hero-phone-float,
   .hero-avatar,
   .hero-message,
   .hero-typing,
