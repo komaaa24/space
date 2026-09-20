@@ -130,14 +130,16 @@ export function PageTitle({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h1 className="text-[22px] font-extrabold tracking-tight">{title}</h1>
+    <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="text-[21px] font-extrabold tracking-tight sm:text-[22px]">
+          {title}
+        </h1>
         {subtitle && (
           <p className="text-sm text-slate-400 mt-0.5">{subtitle}</p>
         )}
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
