@@ -53,10 +53,6 @@ body {
   border-radius: 3px;
 }
 
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
 /* Elektr gradient — hero kartalar va CTA uchun */
 .electric-gradient {
   background: linear-gradient(120deg, #0038b8 0%, #0f5eff 55%, #00c2ff 130%);

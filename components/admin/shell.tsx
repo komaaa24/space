@@ -49,19 +49,6 @@ const planLabels: Record<string, string> = {
   VIP: "VIP",
 };
 
-const mobileLabels: Record<string, string> = {
-  "/admin": "Home",
-  "/admin/inbox": "Inbox",
-  "/admin/automations": "Avto",
-  "/admin/requests": "Ariza",
-  "/admin/analytics": "Tahlil",
-  "/admin/catalog": "Katalog",
-  "/admin/ai": "AI",
-  "/admin/channels": "Kanal",
-  "/admin/integrations": "Ulanish",
-  "/admin/settings": "Sozlama",
-};
-
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [company, setCompany] = useState<string | null>(null);
@@ -93,10 +80,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/95 border-b border-line backdrop-blur-xl">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-[60px] sm:h-16 flex items-center gap-3 sm:gap-4">
+      <header className="bg-white border-b border-line">
+        <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center gap-4">
           <Link href="/admin" className="flex items-center gap-2.5 shrink-0">
-            <LogoMark className="w-10 h-10 sm:w-11 sm:h-11" />
+            <LogoMark className="w-11 h-11" />
             <span className="font-extrabold text-[17px] tracking-tight">
               chatspace
             </span>
@@ -140,26 +127,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <SessionMenu avatarClassName="electric-gradient text-white" />
         </div>
 
-        <div className="max-w-[1400px] mx-auto px-4 pb-3 md:hidden">
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-[#f8faff] px-3 py-2">
-            <div className="min-w-0">
-              <div className="truncate text-[13px] font-bold">
-                {company ?? "Kabinet"}
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Mobil boshqaruv paneli
-              </div>
-            </div>
-            {plan && (
-              <span className="shrink-0 rounded-lg bg-electric-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-electric-600">
-                {planLabels[plan] ?? plan}
-              </span>
-            )}
-          </div>
-        </div>
-
         {/* Tab nav */}
-        <div className="hidden max-w-[1400px] mx-auto px-6 md:flex items-center gap-1 overflow-x-auto thin-scroll">
+        <div className="max-w-[1400px] mx-auto px-6 flex items-center gap-1 overflow-x-auto thin-scroll">
           {tabs.map((t) => {
             const active =
               t.href === "/admin"
@@ -202,50 +171,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-4 py-5 pb-28 sm:px-6 md:py-7 md:pb-7">
-        {children}
-      </main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-white/95 shadow-[0_-18px_45px_rgba(11,18,38,0.08)] backdrop-blur-xl pb-safe md:hidden">
-        <div className="thin-scroll flex gap-1.5 overflow-x-auto px-2 py-2">
-          {tabs.map((t) => {
-            const active =
-              t.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(t.href);
-            const locked = t.feature ? features?.[t.feature] === false : false;
-            return (
-              <Link
-                key={t.href}
-                href={t.href}
-                title={locked ? "VIP tarifda ishlaydi, preview ko'rinadi" : undefined}
-                className={`relative flex min-w-[72px] flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold transition-all ${
-                  active
-                    ? "bg-electric-500 text-white shadow-[0_10px_24px_rgba(15,94,255,0.28)]"
-                    : locked
-                      ? "text-slate-300"
-                      : "text-slate-500 hover:bg-electric-50 hover:text-electric-600"
-                }`}
-              >
-                <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-xl ${
-                    active ? "bg-white/15" : "bg-[#f4f7ff]"
-                  }`}
-                >
-                  <t.icon className="h-4 w-4" />
-                </span>
-                <span>{mobileLabels[t.href] ?? t.label}</span>
-                {locked && <Lock className="absolute right-2 top-2 h-3 w-3" />}
-                {t.href === "/admin/inbox" && waitingCount > 0 && (
-                  <span className="absolute right-1.5 top-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-extrabold text-white ring-2 ring-white">
-                    {waitingCount}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      <main className="max-w-[1400px] mx-auto px-6 py-7">{children}</main>
     </div>
   );
 }

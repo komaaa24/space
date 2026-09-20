@@ -88,26 +88,16 @@ export default function InboxPage() {
   }
 
   useEffect(() => {
-    const initial = window.setTimeout(() => {
-      void load();
-    }, 0);
-    const interval = window.setInterval(() => {
-      void load();
-    }, 4000);
-    return () => {
-      window.clearTimeout(initial);
-      window.clearInterval(interval);
-    };
+    load();
+    const interval = setInterval(load, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    const reset = window.setTimeout(() => {
-      setPayAmount("");
-      setPayDesc("");
-      setPayLinks([]);
-      setPayError(null);
-    }, 0);
-    return () => window.clearTimeout(reset);
+    setPayAmount("");
+    setPayDesc("");
+    setPayLinks([]);
+    setPayError(null);
   }, [selectedId]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
@@ -176,7 +166,7 @@ export default function InboxPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100dvh-220px)] items-center justify-center gap-2 text-sm text-slate-400 md:h-[calc(100vh-190px)]">
+      <div className="flex items-center justify-center h-[calc(100vh-190px)] text-slate-400 text-sm gap-2">
         <Loader2 className="w-4 h-4 animate-spin" /> Yuklanmoqda...
       </div>
     );
@@ -184,22 +174,22 @@ export default function InboxPage() {
 
   if (conversations.length === 0) {
     return (
-      <div className="flex h-[calc(100dvh-220px)] flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-white px-6 text-center md:h-[calc(100vh-190px)]">
+      <div className="rounded-2xl bg-white border border-line border-dashed flex flex-col items-center justify-center h-[calc(100vh-190px)] text-center px-6">
         <span className="w-14 h-14 rounded-2xl bg-[#f4f7ff] flex items-center justify-center mb-4">
           <InboxIcon className="w-6 h-6 text-slate-300" />
         </span>
-        <div className="text-lg font-bold">Hali suhbatlar yo&apos;q</div>
+        <div className="text-lg font-bold">Hali suhbatlar yo'q</div>
         <p className="text-sm text-slate-400 mt-1.5 max-w-sm">
-          Kanal ulanib, mijoz xabar yozishi bilan bu yerda ko&apos;rinadi.
+          Kanal ulanib, mijoz xabar yozishi bilan bu yerda ko'rinadi.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 lg:h-[calc(100vh-190px)] lg:grid-cols-[minmax(300px,360px)_1fr] xl:grid-cols-[minmax(300px,360px)_1fr_280px] xl:gap-5">
+    <div className="grid grid-cols-[minmax(300px,360px)_1fr] xl:grid-cols-[minmax(300px,360px)_1fr_280px] gap-5 h-[calc(100vh-190px)]">
       {/* List */}
-      <div className="flex max-h-[320px] min-h-[280px] flex-col overflow-hidden rounded-2xl border border-line bg-white lg:max-h-none lg:min-h-0">
+      <div className="rounded-2xl bg-white border border-line flex flex-col overflow-hidden">
         <div className="p-4 space-y-3 border-b border-line">
           <div className="flex items-center gap-2 bg-[#f4f7ff] rounded-xl px-3.5 py-2.5">
             <Search className="w-4 h-4 text-slate-300" />
@@ -275,22 +265,22 @@ export default function InboxPage() {
 
       {/* Chat */}
       {selected && (
-        <div className="flex min-h-[620px] flex-col overflow-hidden rounded-2xl border border-line bg-white lg:min-h-0">
-          <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3.5 sm:px-5">
+        <div className="rounded-2xl bg-white border border-line flex flex-col overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-line">
             <Avatar name={selected.contactName ?? "?"} />
-            <div className="min-w-0 flex-1">
+            <div className="flex-1">
               <div className="font-bold text-[14px]">
                 {selected.contactName ?? "Noma'lum"}
               </div>
-              <div className="truncate text-[11px] text-slate-400">
+              <div className="text-[11px] text-slate-400">
                 {channelLabels[selected.channel.type]} ·{" "}
                 {selected.contactHandle ?? selected.contactId}
               </div>
             </div>
-            <div className="order-last flex w-full items-center rounded-xl bg-[#f4f7ff] p-1 sm:order-none sm:w-auto">
+            <div className="flex items-center bg-[#f4f7ff] rounded-xl p-1">
               <button
                 onClick={() => setMode("ai")}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:flex-none ${
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
                   mode === "ai" ? "bg-electric-500 text-white" : "text-slate-500"
                 }`}
               >
@@ -298,7 +288,7 @@ export default function InboxPage() {
               </button>
               <button
                 onClick={() => setMode("operator")}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:flex-none ${
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
                   mode === "operator"
                     ? "bg-navy-900 text-white"
                     : "text-slate-500"
@@ -312,14 +302,14 @@ export default function InboxPage() {
             </button>
           </div>
 
-          <div className="thin-scroll flex-1 space-y-3.5 overflow-y-auto bg-[#fafbff] px-4 py-4 sm:px-5 sm:py-5">
+          <div className="flex-1 overflow-y-auto thin-scroll px-5 py-5 space-y-3.5 bg-[#fafbff]">
             {selected.messages.map((m) => (
               <div
                 key={m.id}
                 className={`flex ${m.role === "USER" ? "" : "justify-end"}`}
               >
                 <div
-                  className={`max-w-[86%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap sm:max-w-[70%] ${
+                  className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
                     m.role === "USER"
                       ? "bg-white border border-line rounded-bl-md"
                       : "electric-gradient text-white rounded-br-md"
@@ -348,7 +338,7 @@ export default function InboxPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3 border-t border-line px-4 py-3 sm:px-5 sm:py-4">
+          <div className="px-5 py-4 border-t border-line flex items-center gap-3">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -443,7 +433,7 @@ export default function InboxPage() {
 
           <div className="rounded-2xl bg-white border border-line p-5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-3 flex items-center gap-1.5">
-              <Wallet className="w-3.5 h-3.5" /> To&apos;lov havolasi
+              <Wallet className="w-3.5 h-3.5" /> To'lov havolasi
             </div>
             <div className="space-y-2">
               <input
