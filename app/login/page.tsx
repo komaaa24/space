@@ -29,23 +29,41 @@ function LoginContent() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data.error ?? "Xatolik yuz berdi");
+        setError(data?.error ?? "Kirishda xatolik yuz berdi");
         setLoading(false);
         return;
       }
-      router.push(data.redirectTo);
+
+      if (!data?.redirectTo) {
+        setError("Kirish muvaffaqiyatli, lekin yo'naltirish topilmadi");
+        setLoading(false);
+        return;
+      }
+
+      router.replace(data.redirectTo);
       router.refresh();
-    } catch {
-      setError("Serverga ulanib bo'lmadi");
+    } catch (err) {
+      const isTimeout = err instanceof DOMException && err.name === "AbortError";
+      setError(
+        isTimeout
+          ? "Kirish uzoq davom etdi. Internetni tekshirib qayta urinib ko'ring."
+          : "Serverga ulanib bo'lmadi",
+      );
       setLoading(false);
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 
@@ -119,6 +137,7 @@ function LoginContent() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
+              disabled={loading}
               className="w-full bg-white border border-line rounded-xl px-4 py-3.5 text-sm outline-none placeholder:text-slate-300 focus:border-electric-400 focus:ring-2 focus:ring-electric-100 transition-all"
             />
             <input
@@ -127,6 +146,7 @@ function LoginContent() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Parol"
+              disabled={loading}
               className="w-full bg-white border border-line rounded-xl px-4 py-3.5 text-sm outline-none placeholder:text-slate-300 focus:border-electric-400 focus:ring-2 focus:ring-electric-100 transition-all"
             />
             {error && (
@@ -138,7 +158,7 @@ function LoginContent() {
               className="w-full flex items-center justify-center gap-2 bg-electric-500 hover:bg-electric-600 disabled:opacity-60 text-white text-sm font-bold py-3.5 rounded-xl transition-colors shadow-[0_4px_14px_rgba(15,94,255,0.3)]"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Kirish
+              {loading ? "Tekshirilmoqda..." : "Kirish"}
             </button>
           </form>
           <p className="text-center text-xs text-slate-400 mt-8">
