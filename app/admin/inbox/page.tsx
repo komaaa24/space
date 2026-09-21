@@ -187,9 +187,9 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="grid grid-cols-[minmax(300px,360px)_1fr] xl:grid-cols-[minmax(300px,360px)_1fr_280px] gap-5 h-[calc(100vh-190px)]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(300px,360px)_1fr] xl:grid-cols-[minmax(300px,360px)_1fr_280px] lg:h-[calc(100vh-190px)]">
       {/* List */}
-      <div className="rounded-2xl bg-white border border-line flex flex-col overflow-hidden">
+      <div className="rounded-2xl bg-white border border-line flex min-h-[320px] flex-col overflow-hidden lg:min-h-0">
         <div className="p-4 space-y-3 border-b border-line">
           <div className="flex items-center gap-2 bg-[#f4f7ff] rounded-xl px-3.5 py-2.5">
             <Search className="w-4 h-4 text-slate-300" />
@@ -220,7 +220,7 @@ export default function InboxPage() {
             ))}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto thin-scroll p-2">
+        <div className="max-h-[42vh] flex-1 overflow-y-auto thin-scroll p-2 lg:max-h-none">
           {filtered.map((c) => {
             const last = c.messages[c.messages.length - 1];
             const name = c.contactName ?? "Noma'lum";
@@ -265,10 +265,10 @@ export default function InboxPage() {
 
       {/* Chat */}
       {selected && (
-        <div className="rounded-2xl bg-white border border-line flex flex-col overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-3.5 border-b border-line">
+        <div className="rounded-2xl bg-white border border-line flex min-h-[540px] flex-col overflow-hidden lg:min-h-0">
+          <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 border-b border-line sm:px-5">
             <Avatar name={selected.contactName ?? "?"} />
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="font-bold text-[14px]">
                 {selected.contactName ?? "Noma'lum"}
               </div>
@@ -277,10 +277,10 @@ export default function InboxPage() {
                 {selected.contactHandle ?? selected.contactId}
               </div>
             </div>
-            <div className="flex items-center bg-[#f4f7ff] rounded-xl p-1">
+            <div className="order-3 flex w-full items-center bg-[#f4f7ff] rounded-xl p-1 sm:order-none sm:w-auto">
               <button
                 onClick={() => setMode("ai")}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                className={`flex flex-1 items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors sm:flex-none ${
                   mode === "ai" ? "bg-electric-500 text-white" : "text-slate-500"
                 }`}
               >
@@ -288,7 +288,7 @@ export default function InboxPage() {
               </button>
               <button
                 onClick={() => setMode("operator")}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                className={`flex flex-1 items-center justify-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors sm:flex-none ${
                   mode === "operator"
                     ? "bg-navy-900 text-white"
                     : "text-slate-500"
@@ -302,14 +302,14 @@ export default function InboxPage() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto thin-scroll px-5 py-5 space-y-3.5 bg-[#fafbff]">
+          <div className="flex-1 overflow-y-auto thin-scroll px-4 py-4 space-y-3.5 bg-[#fafbff] sm:px-5 sm:py-5">
             {selected.messages.map((m) => (
               <div
                 key={m.id}
                 className={`flex ${m.role === "USER" ? "" : "justify-end"}`}
               >
                 <div
-                  className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                  className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap sm:max-w-[70%] ${
                     m.role === "USER"
                       ? "bg-white border border-line rounded-bl-md"
                       : "electric-gradient text-white rounded-br-md"
@@ -338,7 +338,7 @@ export default function InboxPage() {
             ))}
           </div>
 
-          <div className="px-5 py-4 border-t border-line flex items-center gap-3">
+          <div className="px-4 py-3.5 border-t border-line flex items-center gap-2.5 sm:px-5 sm:py-4 sm:gap-3">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}

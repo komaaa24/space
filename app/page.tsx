@@ -39,10 +39,10 @@ export default function Landing() {
     <div className="bg-white text-[#0b1226]">
       {/* Nav */}
       <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-lg border-b border-line">
-        <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <LogoMark className="w-14 h-14" />
-            <span className="font-extrabold text-2xl tracking-tight">
+            <LogoMark className="w-11 h-11 sm:w-14 sm:h-14" />
+            <span className="font-extrabold text-xl tracking-tight sm:text-2xl">
               chatspace
             </span>
           </div>
@@ -51,16 +51,16 @@ export default function Landing() {
             <a href="#how" className="hover:text-[#0b1226]">Qanday ishlaydi</a>
             <a href="#pricing" className="hover:text-[#0b1226]">Tariflar</a>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/login"
-              className="text-sm font-semibold text-slate-600 hover:text-[#0b1226] px-3 py-2"
+              className="text-sm font-semibold text-slate-600 hover:text-[#0b1226] px-2 py-2 sm:px-3"
             >
               Kirish
             </Link>
             <a
               href="#cta"
-              className="text-sm font-semibold bg-electric-500 hover:bg-electric-600 text-white px-4 py-2.5 rounded-xl transition-colors shadow-[0_4px_14px_rgba(15,94,255,0.3)]"
+              className="text-sm font-semibold bg-electric-500 hover:bg-electric-600 text-white px-3 py-2.5 rounded-xl transition-colors shadow-[0_4px_14px_rgba(15,94,255,0.3)] sm:px-4"
             >
               Demo olish
             </a>
@@ -71,37 +71,37 @@ export default function Landing() {
       {/* Hero — left aligned, split layout */}
       <section className="relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-electric-500/5 rounded-full blur-3xl -translate-y-1/3 translate-x-1/4" />
-        <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 grid lg:grid-cols-2 gap-14 items-center relative">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-16 sm:pt-20 sm:pb-24 grid lg:grid-cols-2 gap-10 lg:gap-14 items-center relative">
           <div>
             <div className="inline-flex items-center gap-2 border border-electric-200 bg-electric-50 text-electric-600 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
               <Sparkles className="w-3.5 h-3.5" />
               Savdo uchun AI agent platformasi
             </div>
-            <h1 className="text-4xl md:text-[56px] font-extrabold tracking-tight leading-[1.05]">
+            <h1 className="text-[34px] sm:text-4xl md:text-[56px] font-extrabold tracking-tight leading-[1.05]">
               Mijozlaringizga{" "}
               <span className="electric-text-gradient">AI javob beradi.</span>{" "}
               Siz esa sotasiz.
             </h1>
-            <p className="text-lg text-slate-500 mt-6 leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-500 mt-5 sm:mt-6 leading-relaxed">
               Instagram, Telegram va YouTube&apos;dagi har bir komment va DM&apos;ga AI
               agent siz kabi javob qaytaradi, leadlarni yig&apos;adi va buyurtma
               rasmiylashtiradi — 24/7, 5 soniyada.
             </p>
-            <div className="flex items-center gap-3 mt-9">
+            <div className="flex flex-col gap-3 mt-8 sm:mt-9 sm:flex-row sm:items-center">
               <a
                 href="#cta"
-                className="inline-flex items-center gap-2 bg-electric-500 hover:bg-electric-600 text-white font-bold px-7 py-3.5 rounded-2xl transition-colors shadow-[0_8px_24px_rgba(15,94,255,0.35)]"
+                className="inline-flex items-center justify-center gap-2 bg-electric-500 hover:bg-electric-600 text-white font-bold px-7 py-3.5 rounded-2xl transition-colors shadow-[0_8px_24px_rgba(15,94,255,0.35)]"
               >
                 Bepul demo olish <ArrowRight className="w-4 h-4" />
               </a>
               <Link
                 href="/admin"
-                className="inline-flex items-center gap-2 border border-line hover:border-electric-300 font-bold px-7 py-3.5 rounded-2xl transition-colors"
+                className="inline-flex items-center justify-center gap-2 border border-line hover:border-electric-300 font-bold px-7 py-3.5 rounded-2xl transition-colors"
               >
                 Panelni ko&apos;rish
               </Link>
             </div>
-            <div className="flex items-center gap-6 mt-10 text-slate-400">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-8 sm:mt-10 text-slate-400">
               <span className="text-xs font-semibold uppercase tracking-wider">
                 Ulanadi:
               </span>
@@ -123,7 +123,7 @@ export default function Landing() {
 
       {/* Stats band */}
       <section className="border-y border-line bg-[#fafbff]">
-        <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-3 gap-6 text-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 grid gap-6 text-center sm:grid-cols-3">
           {[
             ["5 soniya", "o'rtacha javob vaqti"],
             ["24/7", "tunu-kun ishlaydi"],

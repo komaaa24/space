@@ -78,13 +78,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-line">
-        <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center gap-4">
+      <header className="sticky top-0 z-40 bg-white/95 border-b border-line backdrop-blur-lg sm:static sm:bg-white sm:backdrop-blur-none">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center gap-2.5 sm:gap-4">
           <Link href="/admin" className="flex items-center gap-2.5 shrink-0">
-            <LogoMark className="w-11 h-11" />
-            <span className="font-extrabold text-[17px] tracking-tight">
+            <LogoMark className="w-10 h-10 sm:w-11 sm:h-11" />
+            <span className="font-extrabold text-[16px] sm:text-[17px] tracking-tight">
               chatspace
             </span>
           </Link>
@@ -119,7 +119,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <SupportLink className="hidden xl:inline-flex" />
 
-          <button className="relative w-9 h-9 rounded-xl hover:bg-slate-50 flex items-center justify-center text-slate-400">
+          <button className="relative hidden sm:flex w-9 h-9 rounded-xl hover:bg-slate-50 items-center justify-center text-slate-400">
             <Bell className="w-4.5 h-4.5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-electric-500" />
           </button>
@@ -128,7 +128,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Tab nav */}
-        <div className="max-w-[1400px] mx-auto px-6 flex items-center gap-1 overflow-x-auto thin-scroll">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 flex items-center gap-1 overflow-x-auto thin-scroll overscroll-x-contain">
           {tabs.map((t) => {
             const active =
               t.href === "/admin"
@@ -144,8 +144,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             }`;
             const content = (
               <>
-                <t.icon className="w-4 h-4" />
-                {t.label}
+                <t.icon className="w-4 h-4 shrink-0" />
+                <span>{t.label}</span>
                 {locked && <Lock className="w-3 h-3" />}
                 {t.href === "/admin/inbox" && waitingCount > 0 && (
                   <span className="w-4.5 h-4.5 rounded-full bg-electric-500 text-white text-[9px] font-bold flex items-center justify-center">
@@ -171,7 +171,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-6 py-7">{children}</main>
+      <main className="max-w-[1400px] mx-auto px-4 py-5 sm:px-6 sm:py-7 min-w-0">
+        {children}
+      </main>
     </div>
   );
 }
