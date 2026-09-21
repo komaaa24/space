@@ -55,17 +55,20 @@ interface InstagramWebhookBody {
 }
 
 function verifyInstagramSignature(req: Request, rawBody: string) {
-  const appSecret = process.env.META_APP_SECRET || process.env.INSTAGRAM_APP_SECRET;
-  if (!appSecret) return process.env.NODE_ENV !== "production";
-
   const signature = req.headers.get("x-hub-signature-256");
   if (!signature?.startsWith("sha256=")) return false;
 
-  const expected = `sha256=${crypto
-    .createHmac("sha256", appSecret)
-    .update(rawBody)
-    .digest("hex")}`;
-  return timingSafeEqualText(signature, expected);
+  const secrets = [process.env.INSTAGRAM_APP_SECRET, process.env.META_APP_SECRET]
+    .filter((secret): secret is string => Boolean(secret?.trim()));
+  if (secrets.length === 0) return process.env.NODE_ENV !== "production";
+
+  return secrets.some((appSecret) => {
+    const expected = `sha256=${crypto
+      .createHmac("sha256", appSecret)
+      .update(rawBody)
+      .digest("hex")}`;
+    return timingSafeEqualText(signature, expected);
+  });
 }
 
 export async function POST(req: Request) {
