@@ -154,10 +154,17 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
         replyText: sentText,
       });
     }
-    console.info("[automation] DM avtojavob yuborildi", {
-      automationId: matched.id,
-      contactId,
-    });
+    if (sentText) {
+      console.info("[automation] DM avtojavob yuborildi", {
+        automationId: matched.id,
+        contactId,
+      });
+    } else {
+      console.info("[automation] DM avtojavob takror yuborilmadi", {
+        automationId: matched.id,
+        contactId,
+      });
+    }
     return true;
   }
 
@@ -176,7 +183,7 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
   return true;
 }
 
-// AUTO_REPLY turi — hech qanday shart/holat yo'q, faqat bitta xabar yuboriladi.
+// AUTO_REPLY turi — bitta kontaktga bitta automation javobi faqat bir marta yuboriladi.
 async function sendSimpleAutoReply(
   automation: AutomationRecord,
   contactId: string,
@@ -187,12 +194,10 @@ async function sendSimpleAutoReply(
     console.warn("[automation] Avtojavob matni bo'sh", { automationId: automation.id });
     return null;
   }
+  const reservation = await createAutomationRunOnce(automation.id, contactId, "DELIVERED");
+  if (!reservation.created) return null;
+
   await sendToRecipient(accessToken, recipient, automation.replyMessage);
-  await prisma.automationRun.upsert({
-    where: { automationId_contactId: { automationId: automation.id, contactId } },
-    update: { status: "DELIVERED" },
-    create: { automationId: automation.id, contactId, status: "DELIVERED" },
-  });
   return automation.replyMessage;
 }
 
@@ -243,6 +248,20 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
     return false;
   }
 
+  const reservedRun = await createAutomationRunOnce(
+    matched.id,
+    contactId,
+    "AWAITING_SUBSCRIPTION",
+  );
+  if (!reservedRun.created) {
+    console.info("[automation] Komment avtojavob takror yuborilmadi", {
+      automationId: matched.id,
+      contactId,
+      commentId,
+    });
+    return true;
+  }
+
   if (matched.publicReplyEnabled) {
     const variants = Array.isArray(matched.publicReplyVariants)
       ? (matched.publicReplyVariants as string[])
@@ -253,7 +272,7 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
     }
   }
 
-  const result = await startRun(matched, contactId, accessToken, { commentId });
+  const result = await startRun(matched, contactId, accessToken, { commentId }, reservedRun.run.id);
   if (result.sentText) {
     await recordAutomationExchange({
       channelId,
@@ -299,12 +318,18 @@ async function startRun(
   contactId: string,
   accessToken: string,
   recipient: Recipient,
+  reservedRunId?: string,
 ) {
-  await prisma.automationRun.upsert({
-    where: { automationId_contactId: { automationId: automation.id, contactId } },
-    update: {},
-    create: { automationId: automation.id, contactId, status: "AWAITING_SUBSCRIPTION" },
-  });
+  const reservation = reservedRunId
+    ? { run: { id: reservedRunId }, created: true }
+    : await createAutomationRunOnce(automation.id, contactId, "AWAITING_SUBSCRIPTION");
+  if (!reservation.created) {
+    console.info("[automation] Oqim takror boshlanmadi", {
+      automationId: automation.id,
+      contactId,
+    });
+    return { contactId, sentText: null };
+  }
 
   const sentText = automation.welcomeMessage ?? "";
   const resolvedId = await sendToRecipient(accessToken, recipient, sentText, {
@@ -318,13 +343,45 @@ async function startRun(
   if (resolvedId && resolvedId !== contactId) {
     await prisma.automationRun
       .update({
-        where: { automationId_contactId: { automationId: automation.id, contactId } },
+        where: { id: reservation.run.id },
         data: { contactId: resolvedId },
       })
       .catch(() => {});
   }
 
   return { contactId: resolvedId || contactId, sentText };
+}
+
+async function createAutomationRunOnce(
+  automationId: string,
+  contactId: string,
+  status: "AWAITING_SUBSCRIPTION" | "DELIVERED",
+) {
+  try {
+    const run = await prisma.automationRun.create({
+      data: { automationId, contactId, status },
+      select: { id: true },
+    });
+    return { run, created: true };
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      const run = await prisma.automationRun.findUnique({
+        where: { automationId_contactId: { automationId, contactId } },
+        select: { id: true },
+      });
+      if (run) return { run, created: false };
+    }
+    throw error;
+  }
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  );
 }
 
 async function advanceRun(
