@@ -140,8 +140,8 @@ export default function Landing() {
       </section>
 
       {/* Features — bento grid */}
-      <section id="features" className="py-24">
-        <div className="max-w-6xl mx-auto px-6">
+      <section id="features" className="py-14 md:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <h2 className="text-3xl md:text-[40px] font-extrabold tracking-tight text-center">
             Bitta platforma — <span className="electric-text-gradient">barcha muloqot</span>
           </h2>
@@ -149,103 +149,125 @@ export default function Landing() {
             Kech javob tufayli mijoz yo&apos;qotish endi tarixda qoladi
           </p>
 
-          <div className="grid md:grid-cols-3 gap-4 mt-14">
+          <div className="grid gap-3 mt-8 md:grid-cols-3 md:gap-4 md:mt-14">
             {/* Big card */}
-            <div className="md:col-span-2 rounded-3xl bg-navy-900 text-white p-8 relative overflow-hidden">
+            <div className="md:col-span-2 rounded-2xl md:rounded-3xl bg-navy-900 text-white p-4 md:p-8 relative overflow-hidden">
               <div className="absolute inset-0 dot-grid opacity-10" />
-              <div className="relative">
-                <span className="w-12 h-12 rounded-2xl electric-gradient flex items-center justify-center">
+              <div className="relative flex items-start gap-4 md:block">
+                <span className="w-11 h-11 md:w-12 md:h-12 shrink-0 rounded-xl md:rounded-2xl electric-gradient flex items-center justify-center">
                   <Bot className="w-6 h-6" />
                 </span>
-                <h3 className="font-extrabold text-2xl mt-5">
-                  AI agent — siz kabi muloqot qiladi
-                </h3>
-                <p className="text-slate-400 mt-2 max-w-md leading-relaxed">
-                  Bilimlar bazangizga tayanib har bir savolga aniq javob
-                  beradi, katalog yuboradi, buyurtma rasmiylashtiradi va
-                  mijoz raqamini so&apos;rab leadga aylantiradi.
-                </p>
-                <div className="flex items-center gap-2 mt-6 flex-wrap">
-                  {["Savol-javob", "Katalog yuborish", "Buyurtma", "Lead yig'ish"].map(
-                    (t) => (
-                      <span
-                        key={t}
-                        className="text-xs font-semibold bg-white/10 px-3 py-1.5 rounded-lg"
-                      >
-                        {t}
-                      </span>
-                    ),
-                  )}
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-base leading-snug md:text-2xl md:mt-5">
+                    AI agent — siz kabi muloqot qiladi
+                  </h3>
+                  <p className="text-xs md:text-base text-slate-400 mt-1.5 md:mt-2 max-w-md leading-relaxed">
+                    Bilimlar bazangizga tayanib har bir savolga aniq javob
+                    beradi, katalog yuboradi, buyurtma rasmiylashtiradi va
+                    mijoz raqamini so&apos;rab leadga aylantiradi.
+                  </p>
+                  <div className="hidden md:flex items-center gap-2 mt-6 flex-wrap">
+                    {["Savol-javob", "Katalog yuborish", "Buyurtma", "Lead yig'ish"].map(
+                      (t) => (
+                        <span
+                          key={t}
+                          className="text-xs font-semibold bg-white/10 px-3 py-1.5 rounded-lg"
+                        >
+                          {t}
+                        </span>
+                      ),
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-line p-7 hover:border-electric-300 transition-colors">
-              <span className="w-11 h-11 rounded-xl bg-electric-50 flex items-center justify-center">
+            <div className="flex items-start gap-4 rounded-2xl md:block md:rounded-3xl border border-line p-4 md:p-7 hover:border-electric-300 transition-colors">
+              <span className="w-11 h-11 shrink-0 rounded-xl bg-electric-50 flex items-center justify-center">
                 <Users className="w-5.5 h-5.5 text-electric-600" />
               </span>
-              <h3 className="font-bold text-lg mt-4">Leadlar avtopilotda</h3>
-              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                Qiziqqan mijozlar raqami so&apos;raladi va holatiga qarab saralanib,
-                arizalar bo&apos;limiga tushadi.
-              </p>
+              <div className="min-w-0">
+                <h3 className="font-bold text-base leading-snug md:text-lg md:mt-4">
+                  Leadlar avtopilotda
+                </h3>
+                <p className="text-xs md:text-sm text-slate-500 mt-1.5 md:mt-2 leading-relaxed">
+                  Qiziqqan mijozlar raqami so&apos;raladi va holatiga qarab saralanib,
+                  arizalar bo&apos;limiga tushadi.
+                </p>
+              </div>
             </div>
 
-            <div className="rounded-3xl border border-line p-7 hover:border-electric-300 transition-colors">
-              <span className="w-11 h-11 rounded-xl bg-electric-50 flex items-center justify-center">
+            <div className="flex items-start gap-4 rounded-2xl md:block md:rounded-3xl border border-line p-4 md:p-7 hover:border-electric-300 transition-colors">
+              <span className="w-11 h-11 shrink-0 rounded-xl bg-electric-50 flex items-center justify-center">
                 <ShieldAlert className="w-5.5 h-5.5 text-electric-600" />
               </span>
-              <h3 className="font-bold text-lg mt-4">Shikoyat va takliflar</h3>
-              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                AI ularni ajratib alohida bo&apos;limlarga saqlaydi — hech narsa
-                e&apos;tibordan chetda qolmaydi.
-              </p>
+              <div className="min-w-0">
+                <h3 className="font-bold text-base leading-snug md:text-lg md:mt-4">
+                  Shikoyat va takliflar
+                </h3>
+                <p className="text-xs md:text-sm text-slate-500 mt-1.5 md:mt-2 leading-relaxed">
+                  AI ularni ajratib alohida bo&apos;limlarga saqlaydi — hech narsa
+                  e&apos;tibordan chetda qolmaydi.
+                </p>
+              </div>
             </div>
 
-            <div className="rounded-3xl border border-line p-7 hover:border-electric-300 transition-colors">
-              <span className="w-11 h-11 rounded-xl bg-electric-50 flex items-center justify-center">
+            <div className="flex items-start gap-4 rounded-2xl md:block md:rounded-3xl border border-line p-4 md:p-7 hover:border-electric-300 transition-colors">
+              <span className="w-11 h-11 shrink-0 rounded-xl bg-electric-50 flex items-center justify-center">
                 <BookOpen className="w-5.5 h-5.5 text-electric-600" />
               </span>
-              <h3 className="font-bold text-lg mt-4">AI Studio</h3>
-              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                Bilimlar bazasi, FAQ, stsenariylar va sinov maydoni — agentni
-                bir joydan boshqaring.
-              </p>
+              <div className="min-w-0">
+                <h3 className="font-bold text-base leading-snug md:text-lg md:mt-4">
+                  AI Studio
+                </h3>
+                <p className="text-xs md:text-sm text-slate-500 mt-1.5 md:mt-2 leading-relaxed">
+                  Bilimlar bazasi, FAQ, stsenariylar va sinov maydoni — agentni
+                  bir joydan boshqaring.
+                </p>
+              </div>
             </div>
 
-            <div className="rounded-3xl border border-line p-7 hover:border-electric-300 transition-colors">
-              <span className="w-11 h-11 rounded-xl bg-electric-50 flex items-center justify-center">
+            <div className="flex items-start gap-4 rounded-2xl md:block md:rounded-3xl border border-line p-4 md:p-7 hover:border-electric-300 transition-colors">
+              <span className="w-11 h-11 shrink-0 rounded-xl bg-electric-50 flex items-center justify-center">
                 <BarChart3 className="w-5.5 h-5.5 text-electric-600" />
               </span>
-              <h3 className="font-bold text-lg mt-4">To&apos;liq analitika</h3>
-              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                Dialoglar, javob vaqti, kanal statistikasi va intentlar — 7/30
-                kunlik kesimda.
-              </p>
+              <div className="min-w-0">
+                <h3 className="font-bold text-base leading-snug md:text-lg md:mt-4">
+                  To&apos;liq analitika
+                </h3>
+                <p className="text-xs md:text-sm text-slate-500 mt-1.5 md:mt-2 leading-relaxed">
+                  Dialoglar, javob vaqti, kanal statistikasi va intentlar — 7/30
+                  kunlik kesimda.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section id="how" className="py-24 bg-[#fafbff] border-y border-line">
-        <div className="max-w-6xl mx-auto px-6">
+      <section id="how" className="py-14 md:py-24 bg-[#fafbff] border-y border-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <h2 className="text-3xl md:text-[40px] font-extrabold tracking-tight text-center">
             3 qadamda ishga tushadi
           </h2>
-          <div className="grid md:grid-cols-3 gap-5 mt-14">
+          <div className="grid gap-3 mt-8 md:grid-cols-3 md:gap-5 md:mt-14">
             {steps.map((s) => (
               <div
                 key={s.n}
-                className="rounded-3xl bg-white border border-line p-7 relative"
+                className="flex items-start gap-4 rounded-2xl md:block md:rounded-3xl bg-white border border-line p-4 md:p-7 relative"
               >
-                <span className="text-5xl font-extrabold text-electric-100">
+                <span className="w-12 shrink-0 text-2xl font-extrabold leading-none text-electric-200 md:w-auto md:text-5xl md:text-electric-100">
                   {s.n}
                 </span>
-                <h3 className="font-bold text-lg mt-3">{s.title}</h3>
-                <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                  {s.desc}
-                </p>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base leading-snug md:text-lg md:mt-3">
+                    {s.title}
+                  </h3>
+                  <p className="text-xs md:text-sm text-slate-500 mt-1.5 md:mt-2 leading-relaxed">
+                    {s.desc}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
