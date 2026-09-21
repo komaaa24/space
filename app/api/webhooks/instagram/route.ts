@@ -113,17 +113,18 @@ export async function POST(req: Request) {
         }
 
         const { accessToken } = parseInstagramCredential(channel.credential);
+        const profile = await getInstagramUserProfile(accessToken, event.sender.id);
 
         const handledByAutomation = await handleAutomationDmEvent({
           channelId: channel.id,
           accessToken,
           contactId: event.sender.id,
+          contactName: profile.name ?? "Instagram foydalanuvchi",
+          contactUsername: profile.username,
           text: event.message.text,
           quickReplyPayload: event.message.quick_reply?.payload,
         });
         if (handledByAutomation) continue;
-
-        const profile = await getInstagramUserProfile(accessToken, event.sender.id);
 
         await handleIncomingMessage({
           channelId: channel.id,
@@ -174,6 +175,8 @@ export async function POST(req: Request) {
           channelId: channel.id,
           accessToken,
           contactId: from.id,
+          contactName: from.username ?? "Instagram foydalanuvchi",
+          contactUsername: from.username,
           commentId,
           mediaId: media.id,
           text,

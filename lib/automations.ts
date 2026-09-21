@@ -65,6 +65,8 @@ interface DmEventParams {
   accessToken: string;
   contactId: string;
   text: string;
+  contactName?: string;
+  contactUsername?: string;
   quickReplyPayload?: string;
 }
 
@@ -72,7 +74,8 @@ interface DmEventParams {
 // mavjud AutomationRun'ni bir qadam oldinga suradi. true qaytsa — xabar
 // avtomatizatsiya tomonidan ushlangan, AI chaqirilmasin.
 export async function handleAutomationDmEvent(params: DmEventParams): Promise<boolean> {
-  const { channelId, accessToken, contactId, text, quickReplyPayload } = params;
+  const { channelId, accessToken, contactId, text, contactName, contactUsername, quickReplyPayload } =
+    params;
   const channel = await prisma.channel.findUnique({
     where: { id: channelId },
     select: { clientId: true },
@@ -92,7 +95,23 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
   });
 
   if (existingRun && quickReplyPayload) {
-    await advanceRun(existingRun.id, existingRun.automation as AutomationRecord, accessToken, contactId);
+    const sentText = await advanceRun(
+      existingRun.id,
+      existingRun.automation as AutomationRecord,
+      accessToken,
+      contactId,
+    );
+    if (sentText) {
+      await recordAutomationExchange({
+        channelId,
+        clientId: channel.clientId,
+        contactId,
+        contactName,
+        contactUsername,
+        incomingText: text,
+        replyText: sentText,
+      });
+    }
     return true;
   }
 
@@ -121,7 +140,20 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
   }
 
   if (matched.kind === "AUTO_REPLY") {
-    await sendSimpleAutoReply(matched, contactId, accessToken, { recipientId: contactId });
+    const sentText = await sendSimpleAutoReply(matched, contactId, accessToken, {
+      recipientId: contactId,
+    });
+    if (sentText) {
+      await recordAutomationExchange({
+        channelId,
+        clientId: channel.clientId,
+        contactId,
+        contactName,
+        contactUsername,
+        incomingText: text,
+        replyText: sentText,
+      });
+    }
     console.info("[automation] DM avtojavob yuborildi", {
       automationId: matched.id,
       contactId,
@@ -129,7 +161,18 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     return true;
   }
 
-  await startRun(matched, contactId, accessToken, { recipientId: contactId });
+  const result = await startRun(matched, contactId, accessToken, { recipientId: contactId });
+  if (result.sentText) {
+    await recordAutomationExchange({
+      channelId,
+      clientId: channel.clientId,
+      contactId: result.contactId,
+      contactName,
+      contactUsername,
+      incomingText: text,
+      replyText: result.sentText,
+    });
+  }
   return true;
 }
 
@@ -142,7 +185,7 @@ async function sendSimpleAutoReply(
 ) {
   if (!automation.replyMessage) {
     console.warn("[automation] Avtojavob matni bo'sh", { automationId: automation.id });
-    return;
+    return null;
   }
   await sendToRecipient(accessToken, recipient, automation.replyMessage);
   await prisma.automationRun.upsert({
@@ -150,19 +193,23 @@ async function sendSimpleAutoReply(
     update: { status: "DELIVERED" },
     create: { automationId: automation.id, contactId, status: "DELIVERED" },
   });
+  return automation.replyMessage;
 }
 
 interface CommentEventParams {
   channelId: string;
   accessToken: string;
   contactId: string; // commenter's IGSID (from.id)
+  contactName?: string;
+  contactUsername?: string;
   commentId: string;
   mediaId: string;
   text: string;
 }
 
 export async function handleAutomationCommentEvent(params: CommentEventParams): Promise<boolean> {
-  const { channelId, accessToken, contactId, commentId, mediaId, text } = params;
+  const { channelId, accessToken, contactId, contactName, contactUsername, commentId, mediaId, text } =
+    params;
   const channel = await prisma.channel.findUnique({
     where: { id: channelId },
     select: { clientId: true },
@@ -206,7 +253,18 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
     }
   }
 
-  await startRun(matched, contactId, accessToken, { commentId });
+  const result = await startRun(matched, contactId, accessToken, { commentId });
+  if (result.sentText) {
+    await recordAutomationExchange({
+      channelId,
+      clientId: channel.clientId,
+      contactId: result.contactId,
+      contactName,
+      contactUsername,
+      incomingText: text,
+      replyText: result.sentText,
+    });
+  }
   return true;
 }
 
@@ -248,7 +306,8 @@ async function startRun(
     create: { automationId: automation.id, contactId, status: "AWAITING_SUBSCRIPTION" },
   });
 
-  const resolvedId = await sendToRecipient(accessToken, recipient, automation.welcomeMessage ?? "", {
+  const sentText = automation.welcomeMessage ?? "";
+  const resolvedId = await sendToRecipient(accessToken, recipient, sentText, {
     buttonLabel: automation.welcomeButtonLabel ?? "Olish",
     payload: PAYLOAD_GET,
   });
@@ -264,6 +323,8 @@ async function startRun(
       })
       .catch(() => {});
   }
+
+  return { contactId: resolvedId || contactId, sentText };
 }
 
 async function advanceRun(
@@ -279,11 +340,12 @@ async function advanceRun(
   const recipient: Recipient = { recipientId };
 
   if (!isSubscribed) {
-    await sendToRecipient(accessToken, recipient, automation.notSubscribedMessage ?? "", {
+    const sentText = automation.notSubscribedMessage ?? "";
+    await sendToRecipient(accessToken, recipient, sentText, {
       buttonLabel: automation.notSubscribedButtonLabel ?? "✅ Tayyor",
       payload: PAYLOAD_READY,
     });
-    return;
+    return sentText;
   }
 
   const appBase = getAppBaseUrl();
@@ -301,5 +363,52 @@ async function advanceRun(
   await prisma.automationRun.update({
     where: { id: runId },
     data: { status: "DELIVERED", reminderDueAt },
+  });
+  return deliveredText;
+}
+
+async function recordAutomationExchange({
+  channelId,
+  clientId,
+  contactId,
+  contactName,
+  contactUsername,
+  incomingText,
+  replyText,
+}: {
+  channelId: string;
+  clientId: string;
+  contactId: string;
+  contactName?: string;
+  contactUsername?: string;
+  incomingText: string;
+  replyText: string;
+}) {
+  const now = new Date();
+  const conversation = await prisma.conversation.upsert({
+    where: { channelId_contactId: { channelId, contactId } },
+    update: {
+      clientId,
+      contactName: contactName || undefined,
+      contactHandle: contactUsername ? `@${contactUsername}` : undefined,
+      status: "ANSWERED",
+      lastMessageAt: now,
+    },
+    create: {
+      clientId,
+      channelId,
+      contactId,
+      contactName: contactName || "Instagram foydalanuvchi",
+      contactHandle: contactUsername ? `@${contactUsername}` : null,
+      status: "ANSWERED",
+      lastMessageAt: now,
+    },
+  });
+
+  await prisma.message.createMany({
+    data: [
+      { conversationId: conversation.id, role: "USER", content: incomingText },
+      { conversationId: conversation.id, role: "AI", content: replyText },
+    ],
   });
 }
