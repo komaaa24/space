@@ -79,10 +79,14 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     params;
   const channel = await prisma.channel.findUnique({
     where: { id: channelId },
-    select: { clientId: true },
+    select: { clientId: true, aiPaused: true },
   });
   if (!channel) {
     console.warn("[automation] DM channel topilmadi", { channelId });
+    return false;
+  }
+  if (channel.aiPaused) {
+    console.info("[automation] DM avtomatizatsiyasi pauzada", { channelId, contactId });
     return false;
   }
 

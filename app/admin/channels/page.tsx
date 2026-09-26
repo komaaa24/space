@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Send, Bot, Plus, X, Loader2, User, Trash2, ShieldCheck } from "lucide-react";
+import { Send, Bot, Plus, X, Loader2, User, Trash2, ShieldCheck, MessageSquare } from "lucide-react";
 import { Badge, PageTitle, PrimaryButton, inputCls } from "@/components/ui";
 import { Instagram, Youtube } from "@/components/brand-icons";
 import { SupportLink } from "@/components/support-link";
@@ -12,7 +12,14 @@ interface DbChannel {
   status: string;
   handle: string | null;
   aiPaused: boolean;
+  commentsPaused: boolean;
   createdAt: string;
+  automation?: {
+    dmTotal: number;
+    dmActive: number;
+    commentTotal: number;
+    commentActive: number;
+  };
 }
 
 const comingSoonCards = [
@@ -25,6 +32,56 @@ const comingSoonCards = [
 ];
 
 type IconComponent = (props: { className?: string; style?: CSSProperties }) => ReactNode;
+
+function ToggleSwitch({ checked, disabled }: { checked: boolean; disabled?: boolean }) {
+  return (
+    <span
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
+        checked ? "bg-emerald-500" : "bg-slate-200"
+      } ${disabled ? "opacity-60" : ""}`}
+    >
+      <span
+        className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </span>
+  );
+}
+
+function ChannelSetting({
+  icon,
+  title,
+  description,
+  checked,
+  disabled,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  checked: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex w-full items-center gap-3 border-t border-line py-4 text-left transition-colors first:border-t-0 disabled:cursor-wait"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-extrabold text-navy-900">{title}</span>
+        <span className="mt-0.5 block text-xs leading-5 text-slate-400">{description}</span>
+      </span>
+      <ToggleSwitch checked={checked} disabled={disabled} />
+    </button>
+  );
+}
 
 const channelMeta: Record<string, { label: string; color: string; Icon: IconComponent }> = {
   TELEGRAM_BOT: { label: "Telegram-bot", color: "#229ED9", Icon: Bot },
@@ -53,6 +110,7 @@ export default function ChannelsPage() {
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [igError, setIgError] = useState<string | null>(null);
   const [showInstagramNotice, setShowInstagramNotice] = useState(false);
+  const [updatingChannelId, setUpdatingChannelId] = useState<string | null>(null);
 
   async function loadChannels() {
     setLoading(true);
@@ -63,13 +121,16 @@ export default function ChannelsPage() {
   }
 
   useEffect(() => {
-    loadChannels();
-    const params = new URLSearchParams(window.location.search);
-    const err = params.get("ig_error");
-    if (err) {
-      setIgError(err);
-      window.history.replaceState({}, "", window.location.pathname);
-    }
+    const timer = window.setTimeout(() => {
+      void loadChannels();
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get("ig_error");
+      if (err) {
+        setIgError(err);
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   async function connect() {
@@ -97,13 +158,26 @@ export default function ChannelsPage() {
     }
   }
 
+  async function updateChannelSettings(c: DbChannel, patch: Partial<Pick<DbChannel, "aiPaused" | "commentsPaused">>) {
+    setUpdatingChannelId(c.id);
+    try {
+      await fetch(`/api/channels/${c.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      await loadChannels();
+    } finally {
+      setUpdatingChannelId(null);
+    }
+  }
+
   async function togglePause(c: DbChannel) {
-    await fetch(`/api/channels/${c.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ aiPaused: !c.aiPaused }),
-    });
-    await loadChannels();
+    await updateChannelSettings(c, { aiPaused: !c.aiPaused });
+  }
+
+  async function toggleComments(c: DbChannel) {
+    await updateChannelSettings(c, { commentsPaused: !c.commentsPaused });
   }
 
   async function disconnectChannel(id: string, label: string) {
@@ -230,79 +304,87 @@ export default function ChannelsPage() {
             Hali hech qanday kanal ulanmagan
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid gap-4 lg:grid-cols-2">
             {channels.map((c) => {
               const meta = channelMeta[c.type] ?? {
                 label: c.type,
                 color: "#94a3b8",
                 Icon: Bot,
               };
+              const dmEnabled = !c.aiPaused;
+              const commentsEnabled = c.type === "INSTAGRAM" && !c.commentsPaused;
+              const updating = updatingChannelId === c.id;
               return (
-              <div
-                key={c.id}
-                className="rounded-2xl bg-white border border-line p-5"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center"
-                    style={{ background: `${meta.color}12` }}
-                  >
-                    <meta.Icon className="w-5.5 h-5.5" style={{ color: meta.color }} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-[15px]">{meta.label}</div>
-                    <div className="text-xs text-slate-400">{c.handle}</div>
-                  </div>
-                  <Badge color="green" dot>
-                    Onlayn
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
-                    <div className="text-[10px] text-slate-400">Holat</div>
-                    <div className="text-[13px] font-bold mt-0.5 text-emerald-600">
-                      OK
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => togglePause(c)}
-                    className={`rounded-xl px-3 py-2.5 text-left transition-colors ${
-                      c.aiPaused
-                        ? "bg-amber-50 ring-1 ring-amber-200"
-                        : "bg-electric-50 ring-1 ring-electric-200"
-                    }`}
-                  >
-                    <div className="text-[10px] text-slate-400">AI javoblar</div>
+                <div key={c.id} className="rounded-2xl bg-white border border-line p-5 shadow-sm">
+                  <div className="flex items-start gap-3">
                     <div
-                      className={`text-[13px] font-bold mt-0.5 ${
-                        c.aiPaused ? "text-amber-600" : "text-electric-600"
-                      }`}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                      style={{ background: `${meta.color}12` }}
                     >
-                      {c.aiPaused ? "Pauzada" : "Yoqilgan"}
+                      <meta.Icon className="h-6 w-6" style={{ color: meta.color }} />
                     </div>
-                  </button>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => togglePause(c)}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-line py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    {c.aiPaused ? "Davom ettirish" : "Pauza"}
-                  </button>
-                  <button
-                    onClick={() => disconnectChannel(c.id, meta.label)}
-                    disabled={disconnectingId === c.id}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-line py-2 text-xs font-semibold text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-50"
-                  >
-                    {disconnectingId === c.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="truncate text-[17px] font-extrabold text-navy-900">{meta.label}</div>
+                        <Badge color="green" dot>Onlayn</Badge>
+                        <Badge color={dmEnabled ? "green" : "gray"}>{dmEnabled ? "AI yoniq" : "AI pauzada"}</Badge>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">{c.handle ?? "Kanal ulangan"}</div>
+                    </div>
+                    <button
+                      onClick={() => disconnectChannel(c.id, meta.label)}
+                      disabled={disconnectingId === c.id}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line text-slate-300 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                      aria-label="Kanalni uzish"
+                    >
+                      {disconnectingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-line px-4">
+                    <ChannelSetting
+                      icon={<Bot className="h-4.5 w-4.5" />}
+                      title="AI va DM avto-javoblari"
+                      description="Agent va DM avtomatizatsiyalari bu kanalda avtomatik javob beradi."
+                      checked={dmEnabled}
+                      disabled={updating}
+                      onClick={() => togglePause(c)}
+                    />
+                    {c.type === "INSTAGRAM" && (
+                      <ChannelSetting
+                        icon={<MessageSquare className="h-4.5 w-4.5" />}
+                        title="Izoh triggerlari"
+                        description={
+                          (c.automation?.commentTotal ?? 0) > 0
+                            ? `${c.automation?.commentActive ?? 0}/${c.automation?.commentTotal ?? 0} ta izoh avtomatizatsiyasi faol.`
+                            : "Izohlardan DM yoki public reply yuborish uchun avtomatizatsiya yarating."
+                        }
+                        checked={commentsEnabled}
+                        disabled={updating}
+                        onClick={() => toggleComments(c)}
+                      />
                     )}
-                    Uzish
-                  </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
+                      <div className="text-[10px] text-slate-400">Holat</div>
+                      <div className="mt-0.5 text-[13px] font-bold text-emerald-600">OK</div>
+                    </div>
+                    <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
+                      <div className="text-[10px] text-slate-400">DM qoidalar</div>
+                      <div className="mt-0.5 text-[13px] font-bold text-navy-900">
+                        {c.automation?.dmActive ?? 0}/{c.automation?.dmTotal ?? 0}
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
+                      <div className="text-[10px] text-slate-400">Izoh qoidalar</div>
+                      <div className="mt-0.5 text-[13px] font-bold text-navy-900">
+                        {c.type === "INSTAGRAM" ? `${c.automation?.commentActive ?? 0}/${c.automation?.commentTotal ?? 0}` : "Yo'q"}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
               );
             })}
           </div>
@@ -314,7 +396,7 @@ export default function ChannelsPage() {
         <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-3">
           Yangi kanal ulash
         </div>
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           <button
             onClick={() => setShowModal(true)}
             className="rounded-2xl bg-white border border-line hover:border-electric-300 hover:shadow-[0_8px_24px_rgba(15,94,255,0.08)] transition-all p-5 text-left group"
@@ -366,28 +448,20 @@ export default function ChannelsPage() {
             </div>
             <div className="font-bold text-sm mt-4">Instagram</div>
             <div className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Meta orqali biznes-akkaunt: DM'lar
+              Meta orqali biznes-akkaunt: DM va izohlar
             </div>
           </button>
 
           {comingSoonCards.map((c) => (
-            <div
-              key={c.title}
-              className="rounded-2xl bg-white border border-line p-5 opacity-50 cursor-not-allowed"
-            >
+            <div key={c.title} className="rounded-2xl bg-white border border-line p-5 opacity-50 cursor-not-allowed">
               <div className="flex items-center justify-between">
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center"
-                  style={{ background: `${c.color}12` }}
-                >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${c.color}12` }}>
                   <c.icon className="w-5.5 h-5.5" style={{ color: c.color }} />
                 </div>
                 <Badge color="gray">Tez orada</Badge>
               </div>
               <div className="font-bold text-sm mt-4">{c.title}</div>
-              <div className="text-xs text-slate-400 mt-1 leading-relaxed">
-                {c.desc}
-              </div>
+              <div className="text-xs text-slate-400 mt-1 leading-relaxed">{c.desc}</div>
             </div>
           ))}
         </div>
@@ -406,7 +480,7 @@ export default function ChannelsPage() {
               </button>
             </div>
             <p className="text-xs text-slate-400">
-              @BotFather'dan olingan token'ni kiriting
+              @BotFather&apos;dan olingan token&apos;ni kiriting
             </p>
             <input
               value={token}
@@ -456,7 +530,7 @@ export default function ChannelsPage() {
                   <p className="mt-2 text-sm leading-6 text-slate-500">
                     Meta tasdiqlash jarayoni yakunlanmagani uchun Instagramni hozircha
                     avtomatik ulash vaqtincha cheklangan. Akkauntingizni xavfsiz va
-                    to'g'ri ulash uchun support jamoamizga yozing.
+                    to&apos;g&apos;ri ulash uchun support jamoamizga yozing.
                   </p>
                 </div>
               </div>
@@ -516,7 +590,7 @@ export default function ChannelsPage() {
             {qrStatus === "pending" && qrImage && (
               <>
                 <p className="text-xs text-slate-400">
-                  Telegram ilovasi → Sozlamalar → Bog'langan qurilmalar →
+                  Telegram ilovasi → Sozlamalar → Bog&apos;langan qurilmalar →
                   Qurilma ulash orqali skanerlang
                 </p>
                 <div className="flex justify-center py-2">

@@ -201,6 +201,13 @@ export async function POST(req: Request) {
           continue;
         }
 
+        if (channel.commentsPaused) {
+          console.info("[instagram webhook] Komment avtomatizatsiyasi pauzada", {
+            channelId: channel.id,
+          });
+          continue;
+        }
+
         const { accessToken } = parseInstagramCredential(channel.credential);
 
         await handleAutomationCommentEvent({

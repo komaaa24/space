@@ -422,11 +422,11 @@ export default function InboxPage() {
           <div className="flex gap-2 overflow-x-auto thin-scroll pb-0.5 text-xs">
             {(
               [
-                ["all", "Barcha kanallar", counts.channels.all, null],
-                ["instagram", "Instagram", counts.channels.instagram, "instagram"],
-                ["telegram", "Telegram", counts.channels.telegram, "telegram"],
-              ] as [ChannelFilter, string, number, ChannelFilter | null][]
-            ).map(([value, label, count, icon]) => (
+                ["all", "Barcha kanallar", null],
+                ["instagram", "Instagram", "instagram"],
+                ["telegram", "Telegram", "telegram"],
+              ] as [ChannelFilter, string, ChannelFilter | null][]
+            ).map(([value, label, icon]) => (
               <button
                 key={value}
                 onClick={() => setChannelFilter(value)}
@@ -439,9 +439,6 @@ export default function InboxPage() {
                 {icon === "instagram" && <Instagram className="w-3.5 h-3.5 text-pink-500" />}
                 {icon === "telegram" && <Send className="w-3.5 h-3.5 text-sky-500" />}
                 {label}
-                <span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] text-slate-500">
-                  {count}
-                </span>
               </button>
             ))}
           </div>
@@ -449,12 +446,12 @@ export default function InboxPage() {
           <div className="flex gap-2 overflow-x-auto thin-scroll pb-0.5 text-xs">
             {(
               [
-                ["all", "Hammasi", counts.statuses.all],
-                ["waiting", "Kutmoqda", counts.statuses.waiting],
-                ["no_reply", "Javobsiz", counts.statuses.noReply],
-                ["answered", "Javob berildi", counts.statuses.answered],
-              ] as [StatusFilter, string, number][]
-            ).map(([value, label, count]) => (
+                ["all", "Hammasi"],
+                ["waiting", "Kutmoqda"],
+                ["no_reply", "Javobsiz"],
+                ["answered", "Javob berildi"],
+              ] as [StatusFilter, string][]
+            ).map(([value, label]) => (
               <button
                 key={value}
                 onClick={() => setStatusFilter(value)}
@@ -465,9 +462,6 @@ export default function InboxPage() {
                 }`}
               >
                 {label}
-                <span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] text-slate-500">
-                  {count}
-                </span>
               </button>
             ))}
           </div>

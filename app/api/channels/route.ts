@@ -17,9 +17,37 @@ export async function GET() {
       handle: true,
       externalAccountId: true,
       aiPaused: true,
+      commentsPaused: true,
       createdAt: true,
       clientId: true,
     },
   });
-  return NextResponse.json({ channels });
+  const automations = await prisma.automation.groupBy({
+    by: ["channelId", "active", "triggerOnComment", "triggerOnDm"],
+    where: { clientId: session.clientId },
+    _count: { _all: true },
+  });
+
+  const channelsWithAutomation = channels.map((channel) => {
+    const rows = automations.filter((row) => row.channelId === channel.id);
+    return {
+      ...channel,
+      automation: {
+        dmTotal: rows
+          .filter((row) => row.triggerOnDm)
+          .reduce((sum, row) => sum + row._count._all, 0),
+        dmActive: rows
+          .filter((row) => row.triggerOnDm && row.active)
+          .reduce((sum, row) => sum + row._count._all, 0),
+        commentTotal: rows
+          .filter((row) => row.triggerOnComment)
+          .reduce((sum, row) => sum + row._count._all, 0),
+        commentActive: rows
+          .filter((row) => row.triggerOnComment && row.active)
+          .reduce((sum, row) => sum + row._count._all, 0),
+      },
+    };
+  });
+
+  return NextResponse.json({ channels: channelsWithAutomation });
 }

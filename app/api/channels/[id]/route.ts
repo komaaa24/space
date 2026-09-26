@@ -21,13 +21,20 @@ export async function PATCH(
   }
 
   const body = await req.json().catch(() => null);
-  if (typeof body?.aiPaused !== "boolean") {
+  const data: { aiPaused?: boolean; commentsPaused?: boolean } = {};
+  if (typeof body?.aiPaused === "boolean") data.aiPaused = body.aiPaused;
+  if (typeof body?.commentsPaused === "boolean") data.commentsPaused = body.commentsPaused;
+  if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Ma'lumot yo'q" }, { status: 400 });
+  }
+
+  if (typeof data.commentsPaused === "boolean" && channel.type !== "INSTAGRAM") {
+    return NextResponse.json({ error: "Izoh sozlamasi faqat Instagram uchun" }, { status: 400 });
   }
 
   const updated = await prisma.channel.update({
     where: { id },
-    data: { aiPaused: body.aiPaused },
+    data,
     select: {
       id: true,
       type: true,
@@ -35,6 +42,7 @@ export async function PATCH(
       handle: true,
       externalAccountId: true,
       aiPaused: true,
+      commentsPaused: true,
       createdAt: true,
       clientId: true,
     },

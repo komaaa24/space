@@ -288,6 +288,7 @@ model Channel {
   externalAccountId String?
   webhookSecret     String? // Telegram webhook secret token (encrypted)
   aiPaused          Boolean       @default(false) // integratsiya saqlanadi, AI shu kanalga javob yozmaydi
+  commentsPaused    Boolean       @default(false) // Instagram izoh triggerlari shu kanal uchun pauzada
   createdAt         DateTime      @default(now())
 
   client   Client @relation(fields: [clientId], references: [id])
