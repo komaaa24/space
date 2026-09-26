@@ -446,12 +446,12 @@ export default function InboxPage() {
           <div className="flex gap-2 overflow-x-auto thin-scroll pb-0.5 text-xs">
             {(
               [
-                ["all", "Hammasi"],
-                ["waiting", "Kutmoqda"],
-                ["no_reply", "Javobsiz"],
-                ["answered", "Javob berildi"],
-              ] as [StatusFilter, string][]
-            ).map(([value, label]) => (
+                ["all", "Hammasi", counts.statuses.all],
+                ["waiting", "Kutmoqda", counts.statuses.waiting],
+                ["no_reply", "Javobsiz", counts.statuses.noReply],
+                ["answered", "Javob berildi", counts.statuses.answered],
+              ] as [StatusFilter, string, number][]
+            ).map(([value, label, count]) => (
               <button
                 key={value}
                 onClick={() => setStatusFilter(value)}
@@ -462,6 +462,15 @@ export default function InboxPage() {
                 }`}
               >
                 {label}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none ${
+                    statusFilter === value
+                      ? "bg-white/80 text-electric-700"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {count}
+                </span>
               </button>
             ))}
           </div>
