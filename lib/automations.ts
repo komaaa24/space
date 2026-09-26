@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { recordInboxMessage } from "@/lib/inbox-messages";
 import { getAppBaseUrl } from "@/lib/env";
 import { canStartAutomation } from "@/lib/access-control";
 import {
@@ -108,7 +109,6 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
         contactId,
         contactName,
         contactUsername,
-        incomingText: text,
         replyText: sentText,
       });
     }
@@ -150,7 +150,6 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
         contactId,
         contactName,
         contactUsername,
-        incomingText: text,
         replyText: sentText,
       });
     }
@@ -176,7 +175,6 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
       contactId: result.contactId,
       contactName,
       contactUsername,
-      incomingText: text,
       replyText: result.sentText,
     });
   }
@@ -280,7 +278,6 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
       contactId: result.contactId,
       contactName,
       contactUsername,
-      incomingText: text,
       replyText: result.sentText,
     });
   }
@@ -430,7 +427,6 @@ async function recordAutomationExchange({
   contactId,
   contactName,
   contactUsername,
-  incomingText,
   replyText,
 }: {
   channelId: string;
@@ -438,34 +434,16 @@ async function recordAutomationExchange({
   contactId: string;
   contactName?: string;
   contactUsername?: string;
-  incomingText: string;
   replyText: string;
 }) {
-  const now = new Date();
-  const conversation = await prisma.conversation.upsert({
-    where: { channelId_contactId: { channelId, contactId } },
-    update: {
-      clientId,
-      contactName: contactName || undefined,
-      contactHandle: contactUsername ? `@${contactUsername}` : undefined,
-      status: "ANSWERED",
-      lastMessageAt: now,
-    },
-    create: {
-      clientId,
+  await recordInboxMessage(
+    {
       channelId,
+      clientId,
       contactId,
-      contactName: contactName || "Instagram foydalanuvchi",
-      contactHandle: contactUsername ? `@${contactUsername}` : null,
-      status: "ANSWERED",
-      lastMessageAt: now,
+      name: contactName,
+      username: contactUsername,
     },
-  });
-
-  await prisma.message.createMany({
-    data: [
-      { conversationId: conversation.id, role: "USER", content: incomingText },
-      { conversationId: conversation.id, role: "AI", content: replyText },
-    ],
-  });
+    { role: "AI", source: "AUTOMATION", content: replyText },
+  );
 }

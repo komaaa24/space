@@ -40,12 +40,17 @@ export async function POST(
       text: msg.text,
       fromName: msg.from?.first_name ?? "Mijoz",
       fromUsername: msg.from?.username,
+      externalMessageId: `telegram:${update.update_id ?? msg.message_id}`,
       sendReply: async (reply) => {
-        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: msg.chat.id, text: reply }),
         });
+        const body = await response.json().catch(() => null);
+        if (!response.ok || body?.ok === false) {
+          throw new Error(body?.description ?? "Telegramga xabar yuborilmadi");
+        }
       },
     });
   } catch (err) {

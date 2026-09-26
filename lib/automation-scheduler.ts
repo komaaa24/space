@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { recordInboxMessage } from "@/lib/inbox-messages";
 import { sendInstagramMessage, parseInstagramCredential } from "@/lib/instagram";
 
 const TICK_MS = 60_000;
@@ -22,6 +23,19 @@ async function sendDueMessages() {
         where: { id: run.id },
         data: { reminderSentAt: new Date() },
       });
+      await recordInboxMessage(
+        {
+          channelId: automation.channel.id,
+          clientId: automation.clientId,
+          contactId: run.contactId,
+        },
+        {
+          role: "AI",
+          source: "AUTOMATION",
+          content: automation.reminderMessage,
+          externalId: `automation:reminder:${run.id}`,
+        },
+      );
     } catch (err) {
       console.error("Avtomatizatsiya eslatmasida xatolik:", err);
     }
@@ -42,6 +56,19 @@ async function sendDueMessages() {
         where: { id: run.id },
         data: { followUpSentAt: new Date() },
       });
+      await recordInboxMessage(
+        {
+          channelId: automation.channel.id,
+          clientId: automation.clientId,
+          contactId: run.contactId,
+        },
+        {
+          role: "AI",
+          source: "AUTOMATION",
+          content: automation.followUpMessage,
+          externalId: `automation:follow-up:${run.id}`,
+        },
+      );
     } catch (err) {
       console.error("Avtomatizatsiya qo'shimcha xabarida xatolik:", err);
     }

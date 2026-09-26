@@ -164,6 +164,7 @@ function attachListener(client: TelegramClient, channelId: string, clientId: str
         text,
         fromName,
         fromUsername,
+        externalMessageId: `telegram-personal:${event.message.id}`,
         sendReply: async (reply) => {
           await event.respond({ message: reply });
         },
@@ -178,6 +179,26 @@ function attachListener(client: TelegramClient, channelId: string, clientId: str
 // tomonida ham sessiyani bekor qiladi. Agar jarayon qayta ishga tushgan
 // bo'lsa-yu, ulanish xotirada bo'lmasa — saqlangan sessiya orqali vaqtinchalik
 // ulanib, shu orqali chiqib ketadi.
+export async function sendPersonalMessage(channelId: string, contactId: string, text: string) {
+  let client = activeListeners.get(channelId);
+  if (!client) {
+    const channel = await prisma.channel.findFirst({
+      where: { id: channelId, type: "TELEGRAM_PERSONAL", status: "ONLINE" },
+      select: { credential: true, clientId: true },
+    });
+    if (!channel?.credential) throw new Error("Telegram shaxsiy kanal ulanmagan");
+
+    const { apiId, apiHash } = getApiCredentials();
+    const session = new StringSession(decryptCredential(channel.credential) ?? channel.credential);
+    client = new TelegramClient(session, apiId, apiHash, { connectionRetries: 3 });
+    await client.connect();
+    activeListeners.set(channelId, client);
+    attachListener(client, channelId, channel.clientId);
+  }
+
+  await client.sendMessage(contactId, { message: text });
+}
+
 export async function disconnectPersonalChannel(channelId: string, savedSession?: string) {
   let client = activeListeners.get(channelId);
 

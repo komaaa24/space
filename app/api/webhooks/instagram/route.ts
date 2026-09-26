@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { recordInboxMessage } from "@/lib/inbox-messages";
 import { handleIncomingMessage } from "@/lib/inbound";
 import { handleAutomationDmEvent, handleAutomationCommentEvent } from "@/lib/automations";
 import {
@@ -32,6 +33,7 @@ interface InstagramMessagingEvent {
     text?: string;
     is_echo?: boolean;
     quick_reply?: { payload: string };
+    attachments?: { type?: string; payload?: { url?: string } }[];
   };
 }
 
@@ -91,7 +93,9 @@ export async function POST(req: Request) {
 
   for (const entry of body.entry ?? []) {
     for (const event of entry.messaging ?? []) {
-      if (!event.message?.text || event.message.is_echo) continue;
+      if (!event.message || event.message.is_echo) continue;
+      const text = event.message.text || event.message.attachments?.map((item) => `[Instagram ${item.type || "media"}]`).join("\n");
+      if (!text) continue;
 
       try {
         console.info("[instagram webhook] DM qabul qilindi", {
@@ -105,13 +109,17 @@ export async function POST(req: Request) {
           (await prisma.channel.findFirst({
             where: { type: "INSTAGRAM", credential: { contains: event.recipient.id } },
           }));
-        if (!channel?.credential) {
+        if (!channel) {
           console.warn("[instagram webhook] DM uchun kanal topilmadi", {
             recipientId: event.recipient.id,
           });
           continue;
         }
 
+        const recordedIncoming = await recordInboxMessage({
+          channelId: channel.id, clientId: channel.clientId, contactId: event.sender.id,
+        }, { role: "USER", source: "CUSTOMER", content: text, externalId: event.message.mid ? `instagram:dm:${event.message.mid}` : undefined });
+        if (recordedIncoming.duplicate || !channel.credential || !event.message.text) continue;
         const { accessToken } = parseInstagramCredential(channel.credential);
         const profile = await getInstagramUserProfile(accessToken, event.sender.id);
 
@@ -121,7 +129,7 @@ export async function POST(req: Request) {
           contactId: event.sender.id,
           contactName: profile.name ?? "Instagram foydalanuvchi",
           contactUsername: profile.username,
-          text: event.message.text,
+          text,
           quickReplyPayload: event.message.quick_reply?.payload,
         });
         if (handledByAutomation) continue;
@@ -130,7 +138,8 @@ export async function POST(req: Request) {
           channelId: channel.id,
           clientId: channel.clientId,
           contactId: event.sender.id,
-          text: event.message.text,
+          text,
+          recordedIncoming,
           fromName: profile.name ?? "Instagram foydalanuvchi",
           fromUsername: profile.username,
           sendReply: async (reply) => {
@@ -162,9 +171,32 @@ export async function POST(req: Request) {
           (await prisma.channel.findFirst({
             where: { type: "INSTAGRAM", credential: { contains: entry.id } },
           }));
-        if (!channel?.credential) {
+        if (!channel) {
           console.warn("[instagram webhook] Komment uchun kanal topilmadi", {
             accountId: entry.id,
+          });
+          continue;
+        }
+
+        const recordedComment = await recordInboxMessage(
+          {
+            channelId: channel.id,
+            clientId: channel.clientId,
+            contactId: from.id,
+            name: from.username ?? "Instagram foydalanuvchi",
+            username: from.username,
+          },
+          {
+            role: "USER",
+            source: "COMMENT",
+            content: text,
+            externalId: `instagram:comment:${commentId}`,
+          },
+        );
+        if (recordedComment.duplicate) continue;
+        if (!channel.credential) {
+          console.warn("[instagram webhook] Komment kanali credentialsiz", {
+            channelId: channel.id,
           });
           continue;
         }

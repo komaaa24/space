@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { recordInboxMessage, type RecordedIncoming } from "@/lib/inbox-messages";
 import {
   generateReply,
   classifyMessage,
@@ -16,6 +17,8 @@ interface IncomingMessageParams {
   fromName: string;
   fromUsername?: string;
   sendReply: (text: string) => Promise<void>;
+  externalMessageId?: string;
+  recordedIncoming?: RecordedIncoming;
 }
 
 // Har qanday kanaldan (Telegram bot/shaxsiy, Instagram va h.k.) kelgan bitta
@@ -30,41 +33,34 @@ export async function handleIncomingMessage({
   fromName,
   fromUsername,
   sendReply,
+  externalMessageId,
+  recordedIncoming,
 }: IncomingMessageParams) {
-  let conversation = await prisma.conversation.findUnique({
-    where: { channelId_contactId: { channelId, contactId } },
-  });
-  if (conversation && conversation.clientId !== clientId) {
-    console.error("Conversation clientId kanal egasiga mos emas, tuzatilmoqda", {
-      conversationId: conversation.id,
-      currentClientId: conversation.clientId,
-      expectedClientId: clientId,
-      channelId,
-    });
-    conversation = await prisma.conversation.update({
+  const incoming =
+    recordedIncoming ??
+    (await recordInboxMessage(
+      { channelId, clientId, contactId, name: fromName, username: fromUsername },
+      { role: "USER", source: "CUSTOMER", content: text, externalId: externalMessageId },
+    ));
+  if (incoming.duplicate) return null;
+
+  const conversation = incoming.conversation;
+  if (recordedIncoming && (fromName || fromUsername)) {
+    await prisma.conversation.update({
       where: { id: conversation.id },
       data: {
-        clientId,
-        contactName: fromName,
-        contactHandle: fromUsername ? `@${fromUsername}` : conversation.contactHandle,
+        contactName: fromName || undefined,
+        contactHandle: fromUsername ? `@${fromUsername}` : undefined,
       },
     });
   }
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        clientId,
-        channelId,
-        contactId,
-        contactName: fromName,
-        contactHandle: fromUsername ? `@${fromUsername}` : null,
-      },
-    });
+  if (
+    conversation.clientId !== clientId ||
+    conversation.channelId !== channelId ||
+    conversation.contactId !== contactId
+  ) {
+    throw new Error("Suhbat egasi mos emas");
   }
-
-  await prisma.message.create({
-    data: { conversationId: conversation.id, role: "USER", content: text },
-  });
 
   const priorMessages = await prisma.message.findMany({
     where: { conversationId: conversation.id },
@@ -133,19 +129,19 @@ export async function handleIncomingMessage({
   }
 
   if (reply) {
-    await prisma.message.create({
-      data: { conversationId: conversation.id, role: "AI", content: reply },
-    });
-    await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { status: "ANSWERED", lastMessageAt: new Date() },
-    });
-    await sendReply(reply);
-  } else {
-    await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { status: "WAITING", lastMessageAt: new Date() },
-    });
+    try {
+      await sendReply(reply);
+      await recordInboxMessage(
+        { channelId, clientId, contactId, name: fromName, username: fromUsername },
+        { role: "AI", source: "AI", content: reply },
+      );
+    } catch (error) {
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { status: "NO_REPLY" },
+      });
+      throw error;
+    }
   }
 
   try {
