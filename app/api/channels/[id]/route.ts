@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { disconnectPersonalChannel } from "@/lib/telegram-personal";
 import { unsubscribeFromMessaging, parseInstagramCredential } from "@/lib/instagram";
 import { decryptCredential } from "@/lib/credentials";
+import { canUseFeature, forbiddenByPlan } from "@/lib/access-control";
 
 export async function PATCH(
   req: Request,
@@ -31,6 +32,10 @@ export async function PATCH(
 
   if (typeof data.commentsPaused === "boolean" && channel.type !== "INSTAGRAM") {
     return NextResponse.json({ error: "Izoh sozlamasi faqat Instagram uchun" }, { status: 400 });
+  }
+
+  if (typeof data.aiPaused === "boolean" && !(await canUseFeature(session.clientId, "aiAgent"))) {
+    return forbiddenByPlan("AI javoblari faqat VIP tarifida ochiladi");
   }
 
   const updated = await prisma.channel.update({

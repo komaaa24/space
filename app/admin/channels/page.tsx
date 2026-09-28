@@ -56,6 +56,7 @@ function ChannelSetting({
   description,
   checked,
   disabled,
+  badge,
   onClick,
 }: {
   icon: ReactNode;
@@ -63,6 +64,7 @@ function ChannelSetting({
   description: string;
   checked: boolean;
   disabled?: boolean;
+  badge?: string;
   onClick: () => void;
 }) {
   return (
@@ -70,13 +72,20 @@ function ChannelSetting({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex w-full items-center gap-3 border-t border-line py-4 text-left transition-colors first:border-t-0 disabled:cursor-wait"
+      className="flex w-full items-center gap-3 border-t border-line py-4 text-left transition-colors first:border-t-0 disabled:cursor-not-allowed"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-extrabold text-navy-900">{title}</span>
+        <span className="flex items-center gap-2">
+          <span className="block text-[13px] font-extrabold text-navy-900">{title}</span>
+          {badge && (
+            <span className="rounded-full bg-electric-50 px-2 py-0.5 text-[10px] font-extrabold text-electric-600">
+              {badge}
+            </span>
+          )}
+        </span>
         <span className="mt-0.5 block text-xs leading-5 text-slate-400">{description}</span>
       </span>
       <ToggleSwitch checked={checked} disabled={disabled} />
@@ -112,13 +121,22 @@ export default function ChannelsPage() {
   const [igError, setIgError] = useState<string | null>(null);
   const [showInstagramNotice, setShowInstagramNotice] = useState(false);
   const [updatingChannelId, setUpdatingChannelId] = useState<string | null>(null);
+  const [aiAllowed, setAiAllowed] = useState(false);
 
   async function loadChannels() {
     setLoading(true);
-    const res = await fetch("/api/channels");
-    const data = await res.json();
-    setChannels(data.channels ?? []);
-    setLoading(false);
+    try {
+      const [channelsRes, meRes] = await Promise.all([
+        fetch("/api/channels", { cache: "no-store" }),
+        fetch("/api/auth/me", { cache: "no-store" }),
+      ]);
+      const channelsData = await channelsRes.json();
+      const meData = meRes.ok ? await meRes.json() : null;
+      setChannels(channelsData.channels ?? []);
+      setAiAllowed(Boolean(meData?.user?.access?.features?.aiAgent));
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -324,7 +342,8 @@ export default function ChannelsPage() {
                 color: "#94a3b8",
                 Icon: Bot,
               };
-              const aiEnabled = !c.aiPaused;
+              const aiFeatureLocked = !aiAllowed;
+              const aiEnabled = aiAllowed && !c.aiPaused;
               const automationEnabled = !c.automationPaused;
               const commentsEnabled = c.type === "INSTAGRAM" && !c.commentsPaused;
               const updating = updatingChannelId === c.id;
@@ -341,7 +360,9 @@ export default function ChannelsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="truncate text-[17px] font-extrabold text-navy-900">{meta.label}</div>
                         <Badge color="green" dot>Onlayn</Badge>
-                        <Badge color={aiEnabled ? "green" : "gray"}>{aiEnabled ? "AI yoniq" : "AI pauzada"}</Badge>
+                        <Badge color={aiEnabled ? "green" : "gray"}>
+                          {aiFeatureLocked ? "AI VIP" : aiEnabled ? "AI yoniq" : "AI pauzada"}
+                        </Badge>
                         <Badge color={automationEnabled ? "green" : "gray"}>
                           {automationEnabled ? "Avtojavob yoniq" : "Avtojavob pauzada"}
                         </Badge>
@@ -362,10 +383,17 @@ export default function ChannelsPage() {
                     <ChannelSetting
                       icon={<Bot className="h-4.5 w-4.5" />}
                       title="AI javoblari"
-                      description="Agent bu kanaldagi oddiy xabarlarga bilim bazasi va katalog asosida javob beradi."
+                      description={
+                        aiFeatureLocked
+                          ? "AI javoblari VIP tarifida ochiladi. FREE va PRO tariflarida avtomatizatsiya javoblari ishlaydi."
+                          : "Agent bu kanaldagi oddiy xabarlarga bilim bazasi va katalog asosida javob beradi."
+                      }
                       checked={aiEnabled}
-                      disabled={updating}
-                      onClick={() => toggleAi(c)}
+                      disabled={updating || aiFeatureLocked}
+                      badge={aiFeatureLocked ? "VIP" : undefined}
+                      onClick={() => {
+                        if (!aiFeatureLocked) void toggleAi(c);
+                      }}
                     />
                     <ChannelSetting
                       icon={<Workflow className="h-4.5 w-4.5" />}
@@ -399,7 +427,7 @@ export default function ChannelsPage() {
                     <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
                       <div className="text-[10px] text-slate-400">AI</div>
                       <div className={`mt-0.5 text-[13px] font-bold ${aiEnabled ? "text-emerald-600" : "text-slate-400"}`}>
-                        {aiEnabled ? "Yoniq" : "Pauza"}
+                        {aiFeatureLocked ? "VIP kerak" : aiEnabled ? "Yoniq" : "Pauza"}
                       </div>
                     </div>
                     <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
