@@ -29,7 +29,7 @@ export async function getDashboard(clientId: string, range: DashboardRange) {
     by: ["status"], where: requestWhere, _count: { _all: true },
   });
   const channelQuery = prisma.channel.groupBy({
-    by: ["status", "aiPaused"], where: channelWhere, _count: { _all: true },
+    by: ["status", "automationPaused"], where: channelWhere, _count: { _all: true },
   });
   const [rows, categories, requestStatuses, withPhone, channels] = await prisma.$transaction([
     prisma.$queryRaw<{ data: DashboardMetrics }[]>(dashboardMetricsQuery(clientId, range)),
@@ -71,7 +71,7 @@ export async function getDashboard(clientId: string, range: DashboardRange) {
         .filter((row) => row.status === 'ONLINE')
         .reduce((sum, row) => sum + row._count._all, 0),
       automated: channels
-        .filter((row) => row.status === 'ONLINE' && !row.aiPaused)
+        .filter((row) => row.status === 'ONLINE' && !row.automationPaused)
         .reduce((sum, row) => sum + row._count._all, 0),
     },
   };

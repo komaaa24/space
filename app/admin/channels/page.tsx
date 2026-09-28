@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Send, Bot, Plus, X, Loader2, User, Trash2, ShieldCheck, MessageSquare } from "lucide-react";
+import { Send, Bot, Plus, X, Loader2, User, Trash2, ShieldCheck, MessageSquare, Workflow } from "lucide-react";
 import { Badge, PageTitle, PrimaryButton, inputCls } from "@/components/ui";
 import { Instagram, Youtube } from "@/components/brand-icons";
 import { SupportLink } from "@/components/support-link";
@@ -12,6 +12,7 @@ interface DbChannel {
   status: string;
   handle: string | null;
   aiPaused: boolean;
+  automationPaused: boolean;
   commentsPaused: boolean;
   createdAt: string;
   automation?: {
@@ -158,22 +159,34 @@ export default function ChannelsPage() {
     }
   }
 
-  async function updateChannelSettings(c: DbChannel, patch: Partial<Pick<DbChannel, "aiPaused" | "commentsPaused">>) {
+  async function updateChannelSettings(
+    c: DbChannel,
+    patch: Partial<Pick<DbChannel, "aiPaused" | "automationPaused" | "commentsPaused">>,
+  ) {
     setUpdatingChannelId(c.id);
     try {
-      await fetch(`/api/channels/${c.id}`, {
+      const res = await fetch(`/api/channels/${c.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setIgError(data?.error ?? "Kanal sozlamasi saqlanmadi");
+        return;
+      }
       await loadChannels();
     } finally {
       setUpdatingChannelId(null);
     }
   }
 
-  async function togglePause(c: DbChannel) {
+  async function toggleAi(c: DbChannel) {
     await updateChannelSettings(c, { aiPaused: !c.aiPaused });
+  }
+
+  async function toggleAutomation(c: DbChannel) {
+    await updateChannelSettings(c, { automationPaused: !c.automationPaused });
   }
 
   async function toggleComments(c: DbChannel) {
@@ -311,7 +324,8 @@ export default function ChannelsPage() {
                 color: "#94a3b8",
                 Icon: Bot,
               };
-              const dmEnabled = !c.aiPaused;
+              const aiEnabled = !c.aiPaused;
+              const automationEnabled = !c.automationPaused;
               const commentsEnabled = c.type === "INSTAGRAM" && !c.commentsPaused;
               const updating = updatingChannelId === c.id;
               return (
@@ -327,7 +341,10 @@ export default function ChannelsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="truncate text-[17px] font-extrabold text-navy-900">{meta.label}</div>
                         <Badge color="green" dot>Onlayn</Badge>
-                        <Badge color={dmEnabled ? "green" : "gray"}>{dmEnabled ? "AI yoniq" : "AI pauzada"}</Badge>
+                        <Badge color={aiEnabled ? "green" : "gray"}>{aiEnabled ? "AI yoniq" : "AI pauzada"}</Badge>
+                        <Badge color={automationEnabled ? "green" : "gray"}>
+                          {automationEnabled ? "Avtojavob yoniq" : "Avtojavob pauzada"}
+                        </Badge>
                       </div>
                       <div className="mt-1 text-xs text-slate-400">{c.handle ?? "Kanal ulangan"}</div>
                     </div>
@@ -344,23 +361,35 @@ export default function ChannelsPage() {
                   <div className="mt-5 rounded-2xl border border-line px-4">
                     <ChannelSetting
                       icon={<Bot className="h-4.5 w-4.5" />}
-                      title="AI va DM avto-javoblari"
-                      description="Agent va DM avtomatizatsiyalari bu kanalda avtomatik javob beradi."
-                      checked={dmEnabled}
+                      title="AI javoblari"
+                      description="Agent bu kanaldagi oddiy xabarlarga bilim bazasi va katalog asosida javob beradi."
+                      checked={aiEnabled}
                       disabled={updating}
-                      onClick={() => togglePause(c)}
+                      onClick={() => toggleAi(c)}
+                    />
+                    <ChannelSetting
+                      icon={<Workflow className="h-4.5 w-4.5" />}
+                      title="Avtomatizatsiya javoblari"
+                      description={
+                        (c.automation?.dmTotal ?? 0) > 0
+                          ? `${c.automation?.dmActive ?? 0}/${c.automation?.dmTotal ?? 0} ta DM qoidasi faol.`
+                          : "Automation bo‘limidagi kalit so‘zli avtojavob qoidalari shu yerda boshqariladi."
+                      }
+                      checked={automationEnabled}
+                      disabled={updating}
+                      onClick={() => toggleAutomation(c)}
                     />
                     {c.type === "INSTAGRAM" && (
                       <ChannelSetting
                         icon={<MessageSquare className="h-4.5 w-4.5" />}
-                        title="Izoh triggerlari"
+                        title="Instagram izoh triggerlari"
                         description={
                           (c.automation?.commentTotal ?? 0) > 0
                             ? `${c.automation?.commentActive ?? 0}/${c.automation?.commentTotal ?? 0} ta izoh avtomatizatsiyasi faol.`
                             : "Izohlardan DM yoki public reply yuborish uchun avtomatizatsiya yarating."
                         }
                         checked={commentsEnabled}
-                        disabled={updating}
+                        disabled={updating || !automationEnabled}
                         onClick={() => toggleComments(c)}
                       />
                     )}
@@ -368,11 +397,13 @@ export default function ChannelsPage() {
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
-                      <div className="text-[10px] text-slate-400">Holat</div>
-                      <div className="mt-0.5 text-[13px] font-bold text-emerald-600">OK</div>
+                      <div className="text-[10px] text-slate-400">AI</div>
+                      <div className={`mt-0.5 text-[13px] font-bold ${aiEnabled ? "text-emerald-600" : "text-slate-400"}`}>
+                        {aiEnabled ? "Yoniq" : "Pauza"}
+                      </div>
                     </div>
                     <div className="rounded-xl bg-[#f4f7ff] px-3 py-2.5">
-                      <div className="text-[10px] text-slate-400">DM qoidalar</div>
+                      <div className="text-[10px] text-slate-400">Avtojavob</div>
                       <div className="mt-0.5 text-[13px] font-bold text-navy-900">
                         {c.automation?.dmActive ?? 0}/{c.automation?.dmTotal ?? 0}
                       </div>

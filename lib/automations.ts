@@ -79,13 +79,13 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     params;
   const channel = await prisma.channel.findUnique({
     where: { id: channelId },
-    select: { clientId: true, aiPaused: true },
+    select: { clientId: true, automationPaused: true },
   });
   if (!channel) {
     console.warn("[automation] DM channel topilmadi", { channelId });
     return false;
   }
-  if (channel.aiPaused) {
+  if (channel.automationPaused) {
     console.info("[automation] DM avtomatizatsiyasi pauzada", { channelId, contactId });
     return false;
   }
@@ -219,10 +219,14 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
     params;
   const channel = await prisma.channel.findUnique({
     where: { id: channelId },
-    select: { clientId: true },
+    select: { clientId: true, automationPaused: true },
   });
   if (!channel) {
     console.warn("[automation] Komment channel topilmadi", { channelId });
+    return false;
+  }
+  if (channel.automationPaused) {
+    console.info("[automation] Komment avtomatizatsiyasi pauzada", { channelId, contactId });
     return false;
   }
 

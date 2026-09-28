@@ -21,8 +21,9 @@ export async function PATCH(
   }
 
   const body = await req.json().catch(() => null);
-  const data: { aiPaused?: boolean; commentsPaused?: boolean } = {};
+  const data: { aiPaused?: boolean; automationPaused?: boolean; commentsPaused?: boolean } = {};
   if (typeof body?.aiPaused === "boolean") data.aiPaused = body.aiPaused;
+  if (typeof body?.automationPaused === "boolean") data.automationPaused = body.automationPaused;
   if (typeof body?.commentsPaused === "boolean") data.commentsPaused = body.commentsPaused;
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Ma'lumot yo'q" }, { status: 400 });
@@ -42,6 +43,7 @@ export async function PATCH(
       handle: true,
       externalAccountId: true,
       aiPaused: true,
+      automationPaused: true,
       commentsPaused: true,
       createdAt: true,
       clientId: true,

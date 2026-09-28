@@ -17,6 +17,7 @@ export async function GET() {
       handle: true,
       externalAccountId: true,
       aiPaused: true,
+      automationPaused: true,
       commentsPaused: true,
       createdAt: true,
       clientId: true,
