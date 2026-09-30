@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Briefcase,
@@ -9,11 +10,20 @@ import {
   Lightbulb,
   Phone,
   Loader2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  CheckCircle2,
+  MessageCircle,
 } from "lucide-react";
 import { PageTitle } from "@/components/ui";
 
 type RequestCategory = "LEAD" | "INTERESTED" | "COMPLAINT" | "SUGGESTION";
 type RequestStatus = "NEW" | "IN_PROGRESS" | "DONE";
+type StatusFilter = RequestStatus | "ALL";
+type ChannelFilter = "ALL" | "INSTAGRAM" | "TELEGRAM_BOT" | "TELEGRAM_PERSONAL" | "YOUTUBE";
+type DateRange = "7" | "30" | "ALL" | "CUSTOM";
 
 interface ApiRequest {
   id: string;
@@ -23,17 +33,61 @@ interface ApiRequest {
   text: string;
   status: RequestStatus;
   createdAt: string;
-  conversation: { channel: { type: string } } | null;
+  updatedAt: string;
+  conversation: {
+    id: string;
+    contactId: string;
+    contactName: string | null;
+    contactHandle: string | null;
+    channel: { type: string; handle: string | null };
+  } | null;
+}
+
+interface RequestSummary {
+  total: number;
+  leads: number;
+  interested: number;
+  complaints: number;
+  suggestions: number;
+  withPhone: number;
+  statuses: { new: number; inProgress: number; done: number };
+}
+
+interface Pagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }
 
 const categoryMeta: Record<
   RequestCategory,
-  { label: string; icon: typeof Briefcase; color: string }
+  { label: string; icon: typeof Briefcase; active: string; iconBg: string }
 > = {
-  LEAD: { label: "Leadlar", icon: Briefcase, color: "#10b981" },
-  INTERESTED: { label: "Qiziqish bildirganlar", icon: Star, color: "#3b82f6" },
-  COMPLAINT: { label: "Shikoyatlar", icon: ShieldAlert, color: "#ef4444" },
-  SUGGESTION: { label: "Takliflar", icon: Lightbulb, color: "#f59e0b" },
+  LEAD: {
+    label: "Leadlar",
+    icon: Briefcase,
+    active: "from-emerald-500 to-teal-500",
+    iconBg: "bg-emerald-50 text-emerald-600",
+  },
+  INTERESTED: {
+    label: "Qiziqish bildirganlar",
+    icon: Star,
+    active: "from-blue-500 to-electric-500",
+    iconBg: "bg-blue-50 text-blue-600",
+  },
+  COMPLAINT: {
+    label: "Shikoyatlar",
+    icon: ShieldAlert,
+    active: "from-rose-500 to-red-500",
+    iconBg: "bg-rose-50 text-rose-600",
+  },
+  SUGGESTION: {
+    label: "Takliflar",
+    icon: Lightbulb,
+    active: "from-amber-400 to-orange-500",
+    iconBg: "bg-amber-50 text-amber-600",
+  },
 };
 
 const channelLabels: Record<string, string> = {
@@ -43,99 +97,198 @@ const channelLabels: Record<string, string> = {
   YOUTUBE: "YouTube",
 };
 
+const statusLabels: Record<RequestStatus, string> = {
+  NEW: "Yangi",
+  IN_PROGRESS: "Jarayonda",
+  DONE: "Yakunlangan",
+};
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("uz-UZ", {
     day: "2-digit",
-    month: "2-digit",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-export default function RequestsPage() {
-  const [requests, setRequests] = useState<ApiRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState<RequestCategory>("LEAD");
-  const [query, setQuery] = useState("");
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return year + "-" + month + "-" + day;
+}
 
-  async function load() {
-    const res = await fetch("/api/requests");
-    const data = await res.json();
-    setRequests(data.requests ?? []);
-    setLoading(false);
-  }
+function getRangeDates(range: DateRange) {
+  if (range === "ALL" || range === "CUSTOM") return { from: "", to: "" };
+  const from = new Date();
+  from.setDate(from.getDate() - (range === "7" ? 6 : 29));
+  return { from: toDateInputValue(from), to: toDateInputValue(new Date()) };
+}
+
+function initials(name: string) {
+  return name.trim().slice(0, 2).toUpperCase() || "?";
+}
+
+export default function RequestsPage() {
+  const router = useRouter();
+  const [requests, setRequests] = useState<ApiRequest[]>([]);
+  const [summary, setSummary] = useState<RequestSummary | null>(null);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [category, setCategory] = useState<RequestCategory | null>("LEAD");
+  const [status, setStatus] = useState<StatusFilter>("ALL");
+  const [channel, setChannel] = useState<ChannelFilter>("ALL");
+  const [dateRange, setDateRange] = useState<DateRange>("30");
+  const [from, setFrom] = useState(() => getRangeDates("30").from);
+  const [to, setTo] = useState(() => getRangeDates("30").to);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: "25",
+    });
+    if (category) params.set("category", category);
+    if (status !== "ALL") params.set("status", status);
+    if (channel !== "ALL") params.set("channel", channel);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (query.trim()) params.set("q", query.trim());
+
+    try {
+      setRefreshing(true);
+      const response = await fetch("/api/requests?" + params.toString(), {
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (response.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (!response.ok) throw new Error(data.error || "Arizalar yuklanmadi");
+      setRequests(data.requests ?? []);
+      setSummary(data.summary ?? null);
+      setPagination(data.pagination ?? null);
+      setError("");
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Arizalar yuklanmadi");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [category, channel, from, page, query, router, status, to]);
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 6000);
-    return () => clearInterval(interval);
-  }, []);
+    const timer = window.setTimeout(() => void load(), query.trim() ? 250 : 0);
+    const interval = window.setInterval(() => void load(), 10000);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+    };
+  }, [load, query]);
 
-  async function updateStatus(id: string, status: RequestStatus) {
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-    await fetch(`/api/requests/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+  function selectCategory(value: RequestCategory | null) {
+    setCategory(value);
+    setPage(1);
   }
 
-  const counts = (c: RequestCategory) =>
-    requests.filter((r) => r.category === c).length;
-  const q = query.trim().toLowerCase();
-  const list = requests.filter(
-    (r) =>
-      r.category === category &&
-      (!q ||
-        r.name.toLowerCase().includes(q) ||
-        r.text.toLowerCase().includes(q) ||
-        r.phone?.toLowerCase().includes(q)),
+  function selectDateRange(value: DateRange) {
+    setDateRange(value);
+    setPage(1);
+    if (value !== "CUSTOM") {
+      const dates = getRangeDates(value);
+      setFrom(dates.from);
+      setTo(dates.to);
+    }
+  }
+
+  function handleFromChange(value: string) {
+    setDateRange("CUSTOM");
+    setFrom(value);
+    setPage(1);
+  }
+
+  function handleToChange(value: string) {
+    setDateRange("CUSTOM");
+    setTo(value);
+    setPage(1);
+  }
+
+  async function updateStatus(id: string, nextStatus: RequestStatus) {
+    const previous = requests.find((item) => item.id === id)?.status;
+    if (!previous || previous === nextStatus) return;
+
+    setUpdatingId(id);
+    setRequests((items) =>
+      items.map((item) => (item.id === id ? { ...item, status: nextStatus } : item)),
+    );
+    try {
+      const response = await fetch("/api/requests/" + id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Holat saqlanmadi");
+      await load();
+    } catch (updateError) {
+      setRequests((items) =>
+        items.map((item) => (item.id === id ? { ...item, status: previous } : item)),
+      );
+      setError(updateError instanceof Error ? updateError.message : "Holat saqlanmadi");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  const cards = useMemo(
+    () => [
+      { category: "LEAD" as const, count: summary?.leads ?? 0 },
+      { category: "INTERESTED" as const, count: summary?.interested ?? 0 },
+      { category: "COMPLAINT" as const, count: summary?.complaints ?? 0 },
+      { category: "SUGGESTION" as const, count: summary?.suggestions ?? 0 },
+    ],
+    [summary],
   );
 
   return (
     <div className="space-y-5">
       <PageTitle
         title="Arizalar"
-        subtitle="AI avtomatik saralagan murojaatlar: leadlar, shikoyatlar, takliflar"
+        subtitle="AI saralagan leadlar, qiziqishlar, shikoyatlar va takliflarni bir joyda boshqaring"
       />
 
-      {/* Category cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {(Object.keys(categoryMeta) as RequestCategory[]).map((c) => {
-          const meta = categoryMeta[c];
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {cards.map(({ category: cardCategory, count }) => {
+          const meta = categoryMeta[cardCategory];
           const Icon = meta.icon;
-          const active = category === c;
+          const active = category === cardCategory;
           return (
             <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={`rounded-2xl p-5 text-left transition-all border ${
-                active
-                  ? "electric-gradient text-white border-transparent shadow-[0_8px_24px_rgba(15,94,255,0.3)]"
-                  : "bg-white border-line hover:border-electric-200"
-              }`}
+              key={cardCategory}
+              type="button"
+              onClick={() => selectCategory(cardCategory)}
+              className={
+                "rounded-2xl border p-4 text-left transition-all sm:p-5 " +
+                (active
+                  ? "border-transparent bg-gradient-to-br " + meta.active + " text-white shadow-[0_8px_24px_rgba(15,94,255,0.18)]"
+                  : "border-line bg-white hover:border-electric-200")
+              }
             >
-              <div className="flex items-center justify-between">
-                <span
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    active ? "bg-white/15" : "bg-electric-50"
-                  }`}
-                >
-                  <Icon
-                    className={`w-4.5 h-4.5 ${active ? "text-white" : "text-electric-600"}`}
-                  />
+              <div className="flex items-center justify-between gap-2">
+                <span className={"flex h-9 w-9 items-center justify-center rounded-xl " + (active ? "bg-white/15 text-white" : meta.iconBg)}>
+                  <Icon className="h-4 w-4" />
                 </span>
-                <span
-                  className={`text-2xl font-extrabold ${active ? "" : "text-slate-900"}`}
-                >
-                  {counts(c)}
+                <span className={"text-2xl font-extrabold " + (active ? "text-white" : "text-slate-900")}>
+                  {count}
                 </span>
               </div>
-              <div
-                className={`text-[13px] font-medium mt-3 ${
-                  active ? "text-electric-100" : "text-slate-400"
-                }`}
-              >
+              <div className={"mt-3 text-xs font-semibold sm:text-[13px] " + (active ? "text-white/80" : "text-slate-400")}>
                 {meta.label}
               </div>
             </button>
@@ -143,74 +296,192 @@ export default function RequestsPage() {
         })}
       </div>
 
-      {/* Filters + list */}
-      <div className="rounded-2xl bg-white border border-line">
-        <div className="p-4 border-b border-line flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 bg-[#f4f7ff] rounded-xl px-3.5 py-2.5 flex-1 min-w-52">
-            <Search className="w-4 h-4 text-slate-300" />
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => selectCategory(null)}
+          className={"rounded-full border px-3.5 py-2 text-xs font-bold transition " + (category === null ? "border-electric-200 bg-electric-50 text-electric-700" : "border-line bg-white text-slate-500 hover:border-electric-200")}
+        >
+          Barcha arizalar <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5">{summary?.total ?? 0}</span>
+        </button>
+        {(["ALL", "NEW", "IN_PROGRESS", "DONE"] as StatusFilter[]).map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => {
+              setStatus(value);
+              setPage(1);
+            }}
+            className={"rounded-full border px-3.5 py-2 text-xs font-bold transition " + (status === value ? "border-electric-200 bg-electric-50 text-electric-700" : "border-line bg-white text-slate-500 hover:border-electric-200")}
+          >
+            {value === "ALL" ? "Barcha holatlar" : statusLabels[value]}
+            {value !== "ALL" && (
+              <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5">
+                {value === "NEW" ? summary?.statuses.new ?? 0 : value === "IN_PROGRESS" ? summary?.statuses.inProgress ?? 0 : summary?.statuses.done ?? 0}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-line bg-white">
+        <div className="flex flex-col gap-3 border-b border-line p-4 xl:flex-row xl:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[#f4f7ff] px-3.5 py-2.5">
+            <Search className="h-4 w-4 shrink-0 text-slate-300" />
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ism, kontakt, matn bo'yicha qidirish..."
-              className="bg-transparent outline-none text-[13px] flex-1 placeholder:text-slate-300"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Ism, telefon yoki matn bo'yicha qidirish..."
+              className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-slate-300"
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={channel}
+              onChange={(event) => {
+                setChannel(event.target.value as ChannelFilter);
+                setPage(1);
+              }}
+              className="rounded-xl border border-line bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 outline-none"
+            >
+              <option value="ALL">Barcha kanallar</option>
+              <option value="INSTAGRAM">Instagram</option>
+              <option value="TELEGRAM_BOT">Telegram-bot</option>
+              <option value="TELEGRAM_PERSONAL">Telegram</option>
+            </select>
+            <div className="flex items-center gap-1 rounded-xl border border-line bg-white p-1">
+              {(["7", "30", "ALL"] as DateRange[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => selectDateRange(value)}
+                  className={"rounded-lg px-2.5 py-1.5 text-xs font-bold " + (dateRange === value ? "bg-electric-50 text-electric-700" : "text-slate-500")}
+                >
+                  {value === "ALL" ? "Barchasi" : value + " kun"}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-1.5 rounded-xl border border-line bg-white px-2.5 py-2 text-xs text-slate-500">
+              <CalendarDays className="h-3.5 w-3.5" />
+              <input type="date" value={from} onChange={(event) => handleFromChange(event.target.value)} className="w-[108px] bg-transparent outline-none" />
+              <span>—</span>
+              <input type="date" value={to} onChange={(event) => handleToChange(event.target.value)} className="w-[108px] bg-transparent outline-none" />
+            </label>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-line text-slate-400 transition hover:border-electric-200 hover:text-electric-600"
+              aria-label="Arizalarni yangilash"
+            >
+              <RefreshCw className={"h-4 w-4 " + (refreshing ? "animate-spin" : "")} />
+            </button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="py-24 flex items-center justify-center gap-2 text-sm text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin" /> Yuklanmoqda...
+        {error && (
+          <div role="alert" className="flex items-center justify-between border-b border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError("")} className="font-bold">Yopish</button>
           </div>
-        ) : list.length === 0 ? (
-          <div className="py-24 text-center">
-            <div className="dot-grid w-24 h-24 mx-auto rounded-2xl mb-4 opacity-40" />
-            <p className="text-sm text-slate-300">Bu kategoriyada arizalar yo'q</p>
+        )}
+
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 text-xs text-slate-400 sm:px-5">
+          <span>{pagination?.total ?? 0} ta ariza topildi</span>
+          <span className="flex items-center gap-1.5">
+            <Phone className="h-3.5 w-3.5 text-electric-500" /> {summary?.withPhone ?? 0} ta telefonli
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="flex min-h-80 items-center justify-center gap-2 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" /> Arizalar yuklanmoqda...
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50">
+              <MessageCircle className="h-6 w-6 text-slate-300" />
+            </div>
+            <p className="mt-4 text-sm font-bold text-slate-700">Ariza topilmadi</p>
+            <p className="mt-1 max-w-sm text-xs leading-5 text-slate-400">
+              Filterlarni o&apos;zgartiring yoki yangi mijoz xabari kelishini kuting.
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-line">
-            {list.map((r) => (
-              <div
-                key={r.id}
-                className="flex items-start gap-4 px-5 py-4 hover:bg-[#fafbff] transition-colors"
-              >
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-semibold shrink-0"
-                  style={{
-                    background: `hsl(${(r.name.charCodeAt(0) * 37) % 360} 60% 50%)`,
-                  }}
-                >
-                  {r.name[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm">{r.name}</span>
-                    {r.conversation && (
-                      <span className="text-[11px] text-slate-400">
-                        {channelLabels[r.conversation.channel.type]} orqali
-                      </span>
-                    )}
+            {requests.map((request) => {
+              const name = request.conversation?.contactName || request.name || "Noma'lum";
+              const channelName = channelLabels[request.conversation?.channel.type ?? ""] ?? "Kanal";
+              const activeMeta = categoryMeta[request.category];
+              return (
+                <div key={request.id} className="flex flex-col gap-3 px-4 py-4 transition hover:bg-[#fafbff] sm:flex-row sm:items-start sm:px-5">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div
+                      className={"flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white " + (activeMeta.iconBg.includes("rose") ? "bg-rose-500" : activeMeta.iconBg.includes("amber") ? "bg-amber-500" : activeMeta.iconBg.includes("blue") ? "bg-blue-500" : "bg-emerald-500")}
+                    >
+                      {initials(name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-bold text-navy-900">{name}</span>
+                        <span className="text-[11px] text-slate-400">{channelName} orqali</span>
+                        <span className={"rounded-full px-2 py-0.5 text-[10px] font-bold " + (request.category === "LEAD" ? "bg-emerald-50 text-emerald-700" : request.category === "COMPLAINT" ? "bg-rose-50 text-rose-600" : request.category === "SUGGESTION" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700")}>
+                          {activeMeta.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-slate-500">{request.text}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                        {request.phone && (
+                          <a href={"tel:" + request.phone} className="flex items-center gap-1.5 font-bold text-electric-600 hover:underline">
+                            <Phone className="h-3 w-3" /> {request.phone}
+                          </a>
+                        )}
+                        {request.conversation?.contactHandle && <span>{request.conversation.contactHandle}</span>}
+                        <span>{formatDate(request.createdAt)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[13px] text-slate-500 mt-1">{r.text}</p>
-                  <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-400">
-                    {r.phone && (
-                      <span className="flex items-center gap-1.5 font-semibold text-electric-600">
-                        <Phone className="w-3 h-3" /> {r.phone}
-                      </span>
-                    )}
-                    <span>{formatDate(r.createdAt)}</span>
+                  <div className="flex items-center justify-between gap-3 sm:shrink-0">
+                    {request.status === "DONE" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                    <select
+                      value={request.status}
+                      disabled={updatingId === request.id}
+                      onChange={(event) => void updateStatus(request.id, event.target.value as RequestStatus)}
+                      className="rounded-lg border border-line bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 outline-none disabled:opacity-50"
+                      aria-label={name + " arizasi holati"}
+                    >
+                      <option value="NEW">Yangi</option>
+                      <option value="IN_PROGRESS">Jarayonda</option>
+                      <option value="DONE">Yakunlangan</option>
+                    </select>
                   </div>
                 </div>
-                <select
-                  value={r.status}
-                  onChange={(e) => updateStatus(r.id, e.target.value as RequestStatus)}
-                  className="bg-white border border-line rounded-lg px-2.5 py-2 text-[13px] outline-none shrink-0"
-                >
-                  <option value="NEW">Yangi</option>
-                  <option value="IN_PROGRESS">Jarayonda</option>
-                  <option value="DONE">Yakunlangan</option>
-                </select>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+        )}
+
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-line px-4 py-3 sm:px-5">
+            <button
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+              className="inline-flex items-center gap-1 rounded-lg border border-line px-3 py-2 text-xs font-bold text-slate-500 disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" /> Oldingi
+            </button>
+            <span className="text-xs font-semibold text-slate-400">{pagination.page} / {pagination.totalPages}</span>
+            <button
+              type="button"
+              disabled={page >= pagination.totalPages || loading}
+              onClick={() => setPage((value) => value + 1)}
+              className="inline-flex items-center gap-1 rounded-lg border border-line px-3 py-2 text-xs font-bold text-slate-500 disabled:opacity-40"
+            >
+              Keyingi <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         )}
       </div>

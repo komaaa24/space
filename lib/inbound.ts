@@ -147,16 +147,59 @@ export async function handleIncomingMessage({
   try {
     const classification = await classifyMessage(text);
     if (classification.category) {
-      await prisma.request.create({
-        data: {
+      const existing = await prisma.request.findFirst({
+        where: {
           clientId,
           conversationId: conversation.id,
           category: classification.category,
-          name: fromName,
-          phone: classification.phone,
-          text,
+          isDuplicate: false,
         },
+        orderBy: { createdAt: "desc" },
       });
+
+      if (existing) {
+        await prisma.request.update({
+          where: { id: existing.id },
+          data: {
+            name: fromName || existing.name,
+            phone: classification.phone ?? existing.phone,
+            text,
+          },
+        });
+      } else {
+        try {
+          await prisma.request.create({
+            data: {
+              clientId,
+              conversationId: conversation.id,
+              category: classification.category,
+              name: fromName || "Noma'lum",
+              phone: classification.phone,
+              text,
+            },
+          });
+        } catch (createError) {
+          // Ikki webhook bir vaqtda kelganda ikkinchisi mavjud arizani yangilaydi.
+          const raced = await prisma.request.findFirst({
+            where: {
+              clientId,
+              conversationId: conversation.id,
+              category: classification.category,
+              isDuplicate: false,
+            },
+            orderBy: { createdAt: "desc" },
+          });
+          if (!raced) throw createError;
+          await prisma.request.update({
+            where: { id: raced.id },
+            data: {
+              name: fromName || raced.name,
+              phone: classification.phone ?? raced.phone,
+              text,
+            },
+          });
+        }
+      }
     }
   } catch (err) {
     console.error("Tasniflashda xatolik:", err);

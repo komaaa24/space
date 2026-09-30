@@ -191,41 +191,68 @@ UNSAFE:
 
 // Har bir mijoz xabaridan keyin chaqiriladi — lead/shikoyat/taklifni aniqlaydi.
 // Bitta qo'shimcha (arzon) Haiku chaqiruvi orqali ishlaydi.
+function normalizeUzbekPhone(value: unknown) {
+  if (typeof value !== "string") return null;
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("998")) return "+" + digits;
+  if (digits.length === 9 && /^(9\d|8\d|7\d)/.test(digits)) return "+998" + digits;
+  return null;
+}
+
+export function extractUzbekPhone(text: string) {
+  const international = text.match(
+    /(?:\+?998[\s().-]*)(\d{2})[\s().-]*(\d{3})[\s().-]*(\d{2})[\s().-]*(\d{2})/g,
+  );
+  const local = text.match(
+    /(?:^|[^\d])(\d{2})[\s().-]?(\d{3})[\s().-]*(\d{2})[\s().-]*(\d{2})(?=$|[^\d])/g,
+  );
+  const candidate = international?.[0] ?? local?.[0] ?? null;
+  return normalizeUzbekPhone(candidate);
+}
+
 export async function classifyMessage(
   userMessage: string,
 ): Promise<Classification> {
-  const response = await getClient().messages.create({
-    model: "claude-haiku-4-5",
-    max_tokens: 200,
-    system: `Sen mijoz xabarini tahlil qilib, FAQAT quyidagi JSON formatda javob berasan (boshqa hech qanday matn yozma):
-{"category": "LEAD" | "INTERESTED" | "COMPLAINT" | "SUGGESTION" | null, "phone": "+998..." | null}
+  const fallbackPhone = extractUzbekPhone(userMessage);
 
-Qoidalar:
-- LEAD: mijoz buyurtma bermoqchi, telefon raqam qoldirdi, yoki aniq xarid qilish niyatini bildirdi
-- INTERESTED: qiziqish bildirdi (masalan narx so'radi) lekin hali raqam qoldirmadi yoki xarid niyati aniq emas
-- COMPLAINT: shikoyat, norozilik, muammo haqida yozgan
-- SUGGESTION: taklif yoki fikr-mulohaza bildirgan
-- null: oddiy salomlashish, umumiy savol, yoki yuqoridagilarga mos kelmaydi
-- Agar xabarda telefon raqam bo'lsa, uni xalqaro formatda "phone" maydoniga yoz, aks holda null`,
-    messages: [{ role: "user", content: userMessage }],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-  const raw = textBlock?.type === "text" ? textBlock.text : "{}";
   try {
-    const match = raw.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(match ? match[0] : raw);
+    const response = await getClient().messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 200,
+      system: "Sen mijoz xabarini tahlil qilib, FAQAT quyidagi JSON formatda javob berasan (boshqa hech qanday matn yozma):\n" +
+        "{\"category\": \"LEAD\" | \"INTERESTED\" | \"COMPLAINT\" | \"SUGGESTION\" | null, \"phone\": \"+998...\" | null}\n\n" +
+        "Qoidalar:\n" +
+        "- LEAD: mijoz buyurtma bermoqchi, telefon raqam qoldirdi, yoki aniq xarid qilish niyatini bildirdi\n" +
+        "- INTERESTED: qiziqish bildirdi (masalan narx so'radi) lekin hali raqam qoldirmadi yoki xarid niyati aniq emas\n" +
+        "- COMPLAINT: shikoyat, norozilik, muammo haqida yozgan\n" +
+        "- SUGGESTION: taklif yoki fikr-mulohaza bildirgan\n" +
+        "- null: oddiy salomlashish, umumiy savol, yoki yuqoridagilarga mos kelmaydi\n" +
+        "- Agar xabarda telefon raqami bo'lsa, uni xalqaro formatda \"phone\" maydoniga yoz, aks holda null",
+      messages: [{ role: "user", content: userMessage }],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    const raw = textBlock?.type === "text" ? textBlock.text : "{}";
+    const parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] ?? raw);
     const validCategories: RequestCategory[] = [
       "LEAD",
       "INTERESTED",
       "COMPLAINT",
       "SUGGESTION",
     ];
-    const category = validCategories.includes(parsed.category)
+    let category = validCategories.includes(parsed.category)
       ? (parsed.category as RequestCategory)
       : null;
-    return { category, phone: parsed.phone ?? null };
+    const phone = normalizeUzbekPhone(parsed.phone) ?? fallbackPhone;
+
+    if (phone && (category === null || category === "INTERESTED")) {
+      category = "LEAD";
+    }
+
+    return { category, phone };
   } catch {
-    return { category: null, phone: null };
+    return fallbackPhone
+      ? { category: "LEAD", phone: fallbackPhone }
+      : { category: null, phone: null };
   }
 }

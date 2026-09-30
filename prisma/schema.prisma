@@ -397,13 +397,15 @@ enum RequestStatus {
 
 // AI avtomatik ajratgan ariza — lead, shikoyat yoki taklif
 model Request {
-  id        String          @id @default(cuid())
-  category  RequestCategory
-  name      String
-  phone     String?
-  text      String
-  status    RequestStatus   @default(NEW)
-  createdAt DateTime        @default(now())
+  id          String          @id @default(cuid())
+  category    RequestCategory
+  name        String
+  phone       String?
+  text        String
+  status      RequestStatus   @default(NEW)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  isDuplicate Boolean         @default(false)
 
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
@@ -412,6 +414,7 @@ model Request {
   conversationId String?
 
   @@index([clientId, createdAt])
+  @@index([clientId, isDuplicate, createdAt])
 }
 
 enum AutomationRunStatus {
