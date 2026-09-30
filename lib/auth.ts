@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE = "chatspace_session";
 const SESSION_DAYS = 30;
@@ -14,6 +15,7 @@ export interface SessionPayload {
   sub: string;
   email: string;
   role: "OWNER" | "CLIENT_ADMIN";
+  teamRole?: "ADMIN" | "OPERATOR" | null;
   clientId: string | null;
   [key: string]: unknown;
 }
@@ -42,7 +44,28 @@ export async function getSession(): Promise<SessionPayload | null> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return verifySessionToken(token);
+  const payload = await verifySessionToken(token);
+  if (!payload?.sub) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.sub },
+    select: {
+      email: true,
+      role: true,
+      teamRole: true,
+      clientId: true,
+      active: true,
+    },
+  });
+  if (!user?.active) return null;
+
+  return {
+    ...payload,
+    email: user.email,
+    role: user.role,
+    teamRole: user.teamRole,
+    clientId: user.clientId,
+  };
 }
 
 export async function setSessionCookie(token: string) {

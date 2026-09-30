@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     if (limited) return limited;
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    if (!user || !user.active) {
       return NextResponse.json(
         { error: "Login yoki parol noto'g'ri" },
         { status: 401 },
@@ -52,6 +52,7 @@ export async function POST(req: Request) {
       sub: user.id,
       email: user.email,
       role: user.role,
+      teamRole: user.teamRole,
       clientId: user.clientId,
     });
     await setSessionCookie(token);

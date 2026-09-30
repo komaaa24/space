@@ -111,6 +111,9 @@ export async function GET(req: Request) {
         },
       },
     });
+  } else if (!user.active) {
+    loginUrl.searchParams.set("error", "account_disabled");
+    return NextResponse.redirect(loginUrl);
   } else {
     user = await prisma.user.update({
       where: { id: user.id },
@@ -125,6 +128,7 @@ export async function GET(req: Request) {
     sub: user.id,
     email: user.email,
     role: user.role,
+    teamRole: user.teamRole,
     clientId: user.clientId,
   });
   await setSessionCookie(token);

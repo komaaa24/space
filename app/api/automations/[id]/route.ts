@@ -59,6 +59,40 @@ export async function PATCH(
   if (Number.isFinite(body?.followUpMinutes)) data.followUpMinutes = body.followUpMinutes;
   if (typeof body?.followUpMessage === "string") data.followUpMessage = body.followUpMessage.trim() || null;
 
+  const nextTriggerOnDm =
+    typeof body?.triggerOnDm === "boolean" ? body.triggerOnDm : automation.triggerOnDm;
+  const nextTriggerOnComment =
+    typeof body?.triggerOnComment === "boolean"
+      ? body.triggerOnComment
+      : automation.triggerOnComment;
+  const nextMatchAny =
+    typeof body?.matchAny === "boolean" ? body.matchAny : automation.matchAny;
+  const nextKeywords =
+    typeof body?.keywords === "string" ? body.keywords.trim() : automation.keywords;
+  const nextReplyMessage =
+    typeof body?.replyMessage === "string"
+      ? body.replyMessage.trim()
+      : automation.replyMessage;
+
+  if (!nextTriggerOnDm && !nextTriggerOnComment) {
+    return NextResponse.json(
+      { error: "Kamida bitta trigger turi (DM yoki Komment) tanlanishi kerak" },
+      { status: 400 },
+    );
+  }
+  if (!nextMatchAny && !nextKeywords) {
+    return NextResponse.json(
+      { error: "Kalit so'zli trigger uchun kalit so'z kiriting" },
+      { status: 400 },
+    );
+  }
+  if (automation.kind === "AUTO_REPLY" && !nextReplyMessage) {
+    return NextResponse.json(
+      { error: "Avtojavob matni bo'sh bo'lishi mumkin emas" },
+      { status: 400 },
+    );
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Ma'lumot yo'q" }, { status: 400 });
   }

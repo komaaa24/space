@@ -226,6 +226,11 @@ export default function AutomationsPage() {
       setStep(1);
       return;
     }
+    if (!form.matchAny && !form.keywords.trim()) {
+      setError("Kalit so'zli trigger uchun kamida bitta kalit so'z kiriting");
+      setStep(1);
+      return;
+    }
     if (!form.welcomeMessage.trim() || !form.notSubscribedMessage.trim() || !form.deliveredMessage.trim() || !form.deliveredLinkUrl.trim()) {
       setError("2-qadamdagi barcha xabar va havola maydonlari to'ldirilishi kerak");
       setStep(2);
@@ -542,7 +547,7 @@ export default function AutomationsPage() {
                 <input
                   value={form.keywords}
                   onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
-                  placeholder="Masalan: narxi, hoxlayman, havola"
+                  placeholder="Masalan: chegirma, katalog, акция"
                   className={inputCls}
                 />
                 <label className="flex items-center gap-1.5 text-[12px] text-slate-500">
@@ -673,7 +678,7 @@ export default function AutomationsPage() {
                     <input
                       value={form.keywords}
                       onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
-                      placeholder="Masalan: narxi, hoxlayman, havola"
+                      placeholder="Masalan: chegirma, katalog, акция"
                       className={inputCls}
                     />
                     <label className="flex items-center gap-1.5 text-[12px] text-slate-500">

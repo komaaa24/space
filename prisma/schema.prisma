@@ -12,6 +12,11 @@ enum Role {
   CLIENT_ADMIN
 }
 
+enum TeamRole {
+  ADMIN
+  OPERATOR
+}
+
 enum AfterHoursMode {
   ALWAYS // AI baribir 24/7 javob beradi
   AUTO_REPLY // faqat "ish vaqti tugadi" degan avtojavob
@@ -100,6 +105,7 @@ model Client {
   payments            Payment[]
   automations         Automation[]
   subscriptions       Subscription[]
+  teamInvitations     TeamInvitation[]
 }
 
 // Chatspace tarif subscriptioni — muvaffaqiyatli to'lovdan keyin aktivlanadi.
@@ -256,6 +262,8 @@ model User {
   email        String    @unique
   passwordHash String
   role         Role
+  teamRole     TeamRole?
+  active       Boolean   @default(true)
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
   lastLoginIp  String?
@@ -278,7 +286,23 @@ enum ChannelStatus {
   ERROR
 }
 
-// Mijozning ulangan kanali (keyingi bosqichda to'ldiriladi)
+// Jamoa a'zosi uchun xavfsiz, bir martalik taklif
+model TeamInvitation {
+  id         String    @id @default(cuid())
+  email      String
+  tokenHash  String    @unique
+  role       TeamRole  @default(OPERATOR)
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  @@index([clientId, email])
+  @@index([clientId, acceptedAt])
+}
+
 model Channel {
   id                String        @id @default(cuid())
   type              ChannelType

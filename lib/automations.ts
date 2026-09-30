@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { recordInboxMessage } from "@/lib/inbox-messages";
 import { getAppBaseUrl } from "@/lib/env";
 import { canStartAutomation } from "@/lib/access-control";
+import { matchesAutomationText } from "@/lib/automation-matching";
 import {
   checkIsFollowing,
   replyToComment,
@@ -38,20 +39,6 @@ interface AutomationRecord {
   reminderMinutes: number | null;
   followUpEnabled: boolean;
   followUpMinutes: number | null;
-}
-
-function textMatches(automation: AutomationRecord, text: string): boolean {
-  if (automation.matchAny) return true;
-  const keywords = (automation.keywords ?? "")
-    .split(",")
-    .map((k) => k.trim().toLowerCase())
-    .filter(Boolean);
-  if (keywords.length === 0) return false;
-  const normalized = text.trim().toLowerCase();
-  if (automation.exactMatch) {
-    return keywords.includes(normalized);
-  }
-  return keywords.some((k) => normalized.includes(k));
 }
 
 function mediaMatches(automation: AutomationRecord, mediaId?: string): boolean {
@@ -99,7 +86,10 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     include: { automation: true },
   });
 
-  if (existingRun && quickReplyPayload) {
+  const isAutomationQuickReply =
+    quickReplyPayload === PAYLOAD_GET || quickReplyPayload === PAYLOAD_READY;
+
+  if (existingRun && isAutomationQuickReply) {
     const sentText = await advanceRun(
       existingRun.id,
       existingRun.automation as AutomationRecord,
@@ -116,6 +106,11 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
         replyText: sentText,
       });
     }
+    console.info("[automation] DM lead flow davom etdi", {
+      automationId: existingRun.automationId,
+      contactId,
+      quickReplyPayload,
+    });
     return true;
   }
 
@@ -133,7 +128,9 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     where: { channelId, active: true, triggerOnDm: true },
   })) as unknown as AutomationRecord[];
 
-  const matched = automations.find((a) => textMatches(a, text));
+  const matched = automations.find((a) =>
+    matchesAutomationText(a.matchAny, a.keywords, a.exactMatch, text),
+  );
   if (!matched) {
     console.info("[automation] DM automation mos kelmadi", {
       channelId,
@@ -142,6 +139,12 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
     });
     return false;
   }
+
+  console.info("[automation] DM automation mos keldi", {
+    automationId: matched.id,
+    kind: matched.kind,
+    contactId,
+  });
 
   if (matched.kind === "AUTO_REPLY") {
     const sentText = await sendSimpleAutoReply(matched, contactId, accessToken, {
@@ -182,6 +185,10 @@ export async function handleAutomationDmEvent(params: DmEventParams): Promise<bo
       replyText: result.sentText,
     });
   }
+  console.info("[automation] DM lead flow boshlandi", {
+    automationId: matched.id,
+    contactId: result.contactId,
+  });
   return true;
 }
 
@@ -199,8 +206,14 @@ async function sendSimpleAutoReply(
   const reservation = await createAutomationRunOnce(automation.id, contactId, "DELIVERED");
   if (!reservation.created) return null;
 
-  await sendToRecipient(accessToken, recipient, automation.replyMessage);
-  return automation.replyMessage;
+  try {
+    await sendToRecipient(accessToken, recipient, automation.replyMessage);
+    return automation.replyMessage;
+  } catch (error) {
+    // A failed Meta request must not permanently consume this contact.
+    await prisma.automationRun.delete({ where: { id: reservation.run.id } }).catch(() => {});
+    throw error;
+  }
 }
 
 interface CommentEventParams {
@@ -244,7 +257,11 @@ export async function handleAutomationCommentEvent(params: CommentEventParams): 
     where: { channelId, active: true, triggerOnComment: true },
   })) as unknown as AutomationRecord[];
 
-  const matched = automations.find((a) => textMatches(a, text) && mediaMatches(a, mediaId));
+  const matched = automations.find(
+    (a) =>
+      matchesAutomationText(a.matchAny, a.keywords, a.exactMatch, text) &&
+      mediaMatches(a, mediaId),
+  );
   if (!matched) {
     console.info("[automation] Komment automation mos kelmadi", {
       channelId,
@@ -337,10 +354,17 @@ async function startRun(
   }
 
   const sentText = automation.welcomeMessage ?? "";
-  const resolvedId = await sendToRecipient(accessToken, recipient, sentText, {
-    buttonLabel: automation.welcomeButtonLabel ?? "Olish",
-    payload: PAYLOAD_GET,
-  });
+  let resolvedId: string | undefined;
+  try {
+    resolvedId = await sendToRecipient(accessToken, recipient, sentText, {
+      buttonLabel: automation.welcomeButtonLabel ?? "Olish",
+      payload: PAYLOAD_GET,
+    });
+  } catch (error) {
+    // Allow the next webhook delivery to retry after a transient Meta error.
+    await prisma.automationRun.delete({ where: { id: reservation.run.id } }).catch(() => {});
+    throw error;
+  }
 
   // Komment orqali boshlangan bo'lsa, resolvedId — foydalanuvchining doimiy
   // PSID'i (recipient_id), shu bilan bog'liq holatni yangilaymiz — chunki
@@ -412,7 +436,9 @@ async function advanceRun(
 
   const appBase = getAppBaseUrl();
   const trackedUrl = `${appBase}/api/automations/click/${runId}`;
-  const deliveredText = `${automation.deliveredMessage}\n\n${automation.deliveredButtonLabel}: ${trackedUrl}`;
+  const deliveredText = `${automation.deliveredMessage}
+
+${automation.deliveredButtonLabel}: ${trackedUrl}`;
 
   await sendToRecipient(accessToken, recipient, deliveredText);
 

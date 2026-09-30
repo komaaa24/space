@@ -15,6 +15,9 @@ import {
   Plus,
   Loader2,
   Sparkles,
+  Copy,
+  Link2,
+  Trash2,
 } from "lucide-react";
 import {
   Badge,
@@ -204,6 +207,271 @@ function AccountTab({ email }: { email: string }) {
         </div>
       </SectionCard>
     </>
+  );
+}
+
+
+type TeamMember = {
+  id: string;
+  email: string;
+  role: string;
+  teamRole: "ADMIN" | "OPERATOR" | null;
+  createdAt: string;
+};
+
+type TeamInvitation = {
+  id: string;
+  email: string;
+  role: "ADMIN" | "OPERATOR";
+  expiresAt: string;
+  createdAt: string;
+};
+
+function TeamTab() {
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"ADMIN" | "OPERATOR">("OPERATOR");
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function loadTeam() {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/team", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Jamoa ma'lumotlarini yuklab bo'lmadi");
+      setMembers(data.members ?? []);
+      setInvitations(data.invitations ?? []);
+      setCurrentUserId(data.currentUserId ?? "");
+      setCanManage(Boolean(data.canManage));
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadTeam(), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  async function inviteMember(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!inviteEmail.trim() || saving) return;
+
+    setSaving(true);
+    setError("");
+    setInviteUrl("");
+    setCopied(false);
+    try {
+      const response = await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Taklif yuborilmadi");
+      setInviteUrl(data.inviteUrl);
+      setInviteEmail("");
+      await loadTeam();
+    } catch (inviteError) {
+      setError(inviteError instanceof Error ? inviteError.message : "Taklif yuborilmadi");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeMember(member: TeamMember) {
+    if (!canManage || member.id === currentUserId) return;
+    if (!window.confirm(member.email + " akkauntini jamoadan olib tashlaysizmi?")) return;
+
+    setError("");
+    const response = await fetch("/api/team/members/" + member.id, { method: "DELETE" });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.error || "A'zoni olib tashlab bo'lmadi");
+      return;
+    }
+    await loadTeam();
+  }
+
+  async function revokeInvitation(invitation: TeamInvitation) {
+    if (!canManage) return;
+    const response = await fetch("/api/team/invitations/" + invitation.id, { method: "DELETE" });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.error || "Taklif bekor qilinmadi");
+      return;
+    }
+    await loadTeam();
+  }
+
+  async function copyInviteUrl() {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  const roleLabel = (role: "ADMIN" | "OPERATOR" | null) =>
+    role === "ADMIN" ? "Admin" : role === "OPERATOR" ? "Operator" : "Egasi";
+
+  return (
+    <SectionCard title="Jamoa" subtitle="Panelga kirish huquqiga ega a'zolarni boshqaring">
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {loading ? (
+          <div className="flex items-center gap-2 rounded-xl border border-line px-4 py-4 text-sm text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" /> Jamoa yuklanmoqda...
+          </div>
+        ) : members.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-sm text-slate-500">
+            Hozircha jamoa a&apos;zolari yo&apos;q
+          </div>
+        ) : (
+          members.map((member) => (
+            <div key={member.id} className="flex items-center gap-3 rounded-xl border border-line px-4 py-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl electric-gradient text-sm font-bold text-white">
+                {member.email.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold">{member.email}</div>
+                <div className="text-xs text-slate-400">
+                  {member.id === currentUserId ? "Siz" : "Jamoa a'zosi"}
+                </div>
+              </div>
+              <Badge color={member.teamRole === "ADMIN" || !member.teamRole ? "blue" : "green"} dot>
+                {roleLabel(member.teamRole)}
+              </Badge>
+              {canManage && member.id !== currentUserId && member.teamRole && (
+                <button
+                  type="button"
+                  onClick={() => void removeMember(member)}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  title="A'zoni olib tashlash"
+                  aria-label={member.email + "ni olib tashlash"}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {canManage && (
+        <div className="border-t border-line pt-4">
+          {!showInvite ? (
+            <PrimaryButton onClick={() => setShowInvite(true)}>
+              <Plus className="h-4 w-4" /> A&apos;zo qo&apos;shish
+            </PrimaryButton>
+          ) : (
+            <form onSubmit={inviteMember} className="space-y-3 rounded-xl border border-line bg-slate-50 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-bold">Yangi a&apos;zoni taklif qilish</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInvite(false);
+                    setInviteUrl("");
+                    setError("");
+                  }}
+                  className="rounded-lg p-1 text-slate-400 hover:bg-white hover:text-slate-700"
+                  aria-label="Taklif formasini yopish"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr_150px_auto] sm:items-end">
+                <Field label="Email">
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    placeholder="xodim@example.com"
+                    className={inputCls}
+                    required
+                  />
+                </Field>
+                <Field label="Rol">
+                  <select
+                    value={inviteRole}
+                    onChange={(event) => setInviteRole(event.target.value as "ADMIN" | "OPERATOR")}
+                    className={inputCls}
+                  >
+                    <option value="OPERATOR">Operator</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </Field>
+                <PrimaryButton disabled={saving}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  Taklif qilish
+                </PrimaryButton>
+              </div>
+              <p className="text-xs text-slate-400">
+                Taklif havolasi 7 kun amal qiladi. Havolani xodimga o&apos;zingiz yuborasiz.
+              </p>
+              {inviteUrl && (
+                <div className="flex gap-2 rounded-xl border border-electric-200 bg-white p-2">
+                  <input value={inviteUrl} readOnly className="min-w-0 flex-1 bg-transparent px-2 text-xs text-slate-600 outline-none" />
+                  <button
+                    type="button"
+                    onClick={() => void copyInviteUrl()}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-electric-500 px-3 py-2 text-xs font-bold text-white hover:bg-electric-600"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? "Nusxalandi" : "Nusxalash"}
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+        </div>
+      )}
+
+      {invitations.length > 0 && (
+        <div className="border-t border-line pt-4">
+          <div className="mb-3 text-sm font-bold">Kutilayotgan takliflar</div>
+          <div className="space-y-2">
+            {invitations.map((invitation) => (
+              <div key={invitation.id} className="flex items-center gap-3 rounded-xl border border-dashed border-line px-4 py-3">
+                <Link2 className="h-4 w-4 shrink-0 text-slate-400" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{invitation.email}</div>
+                  <div className="text-xs text-slate-400">
+                    {roleLabel(invitation.role)} · {new Intl.DateTimeFormat("uz-UZ").format(new Date(invitation.expiresAt))} gacha
+                  </div>
+                </div>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => void revokeInvitation(invitation)}
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                    title="Taklifni bekor qilish"
+                    aria-label={invitation.email + " taklifini bekor qilish"}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
@@ -518,25 +786,7 @@ export default function SettingsPage() {
           </SectionCard>
         )}
 
-        {active === "team" && (
-          <SectionCard title="Jamoa" subtitle="Panelga kirish huquqiga ega a'zolar">
-            <div className="flex items-center gap-3 border border-line rounded-xl px-4 py-3.5">
-              <div className="w-10 h-10 rounded-xl electric-gradient text-white text-sm font-bold flex items-center justify-center">
-                {email ? email.slice(0, 2).toUpperCase() : "…"}
-              </div>
-              <div className="flex-1">
-                <div className="text-sm font-bold">{email || "Yuklanmoqda..."}</div>
-                <div className="text-xs text-slate-400">Asosiy akkaunt</div>
-              </div>
-              <Badge color="blue" dot>
-                Egasi
-              </Badge>
-            </div>
-            <PrimaryButton disabled className="opacity-50 cursor-not-allowed">
-              <Plus className="w-4 h-4" /> A&apos;zo qo&apos;shish (tez orada)
-            </PrimaryButton>
-          </SectionCard>
-        )}
+        {active === "team" && <TeamTab />}
 
         {active === "billing" && (
           <>
