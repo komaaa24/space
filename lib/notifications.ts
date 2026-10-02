@@ -42,26 +42,34 @@ export async function createNotification(input: {
   }
 
   const botToken = process.env.TELEGRAM_NOTIFICATION_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_NOTIFICATION_CHAT_ID;
-  if (typeEnabled && botToken && chatId) {
+  const chatIds = (process.env.TELEGRAM_NOTIFICATION_CHAT_ID ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (typeEnabled && botToken && chatIds.length > 0) {
     const text = [
       input.type === "LEAD" ? "Yangi lead" : input.type === "COMPLAINT" ? "Yangi shikoyat" : "Chatspace bildirishnomasi",
       input.title,
       input.body,
     ].join("\n");
 
-    try {
-      const response = await fetch("https://api.telegram.org/bot" + botToken + "/sendMessage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text }),
-      });
-      if (!response.ok) {
-        console.error("[notifications] Telegram xabari yuborilmadi", await response.text());
-      }
-    } catch (error) {
-      console.error("[notifications] Telegram API xatosi", error);
-    }
+    await Promise.all(
+      chatIds.map(async (chatId) => {
+        try {
+          const response = await fetch("https://api.telegram.org/bot" + botToken + "/sendMessage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text }),
+          });
+          if (!response.ok) {
+            console.error("[notifications] Telegram xabari yuborilmadi", chatId, await response.text());
+          }
+        } catch (error) {
+          console.error("[notifications] Telegram API xatosi", chatId, error);
+        }
+      }),
+    );
   }
 
   return notification;
