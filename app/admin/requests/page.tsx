@@ -14,8 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
-  CheckCircle2,
   MessageCircle,
+  ChevronDown,
 } from "lucide-react";
 import { PageTitle } from "@/components/ui";
 
@@ -25,7 +25,7 @@ type StatusFilter = RequestStatus | "ALL";
 type ChannelFilter = "ALL" | "INSTAGRAM" | "TELEGRAM_BOT" | "TELEGRAM_PERSONAL" | "YOUTUBE";
 type DateRange = "7" | "30" | "ALL" | "CUSTOM";
 
-interface ApiRequest {
+interface RequestDetail {
   id: string;
   category: RequestCategory;
   name: string;
@@ -34,6 +34,7 @@ interface ApiRequest {
   status: RequestStatus;
   createdAt: string;
   updatedAt: string;
+  isDuplicate: boolean;
   conversation: {
     id: string;
     contactId: string;
@@ -41,6 +42,20 @@ interface ApiRequest {
     contactHandle: string | null;
     channel: { type: string; handle: string | null };
   } | null;
+}
+
+interface PersonGroup {
+  id: string;
+  conversationId: string | null;
+  name: string;
+  contactHandle: string | null;
+  channel: { type: string; handle: string | null } | null;
+  phones: string[];
+  categories: RequestCategory[];
+  status: RequestStatus;
+  latestAt: string;
+  requestCount: number;
+  requests: RequestDetail[];
 }
 
 interface RequestSummary {
@@ -67,25 +82,25 @@ const categoryMeta: Record<
   LEAD: {
     label: "Leadlar",
     icon: Briefcase,
-    active: "from-emerald-500 to-teal-500",
+    active: "from-electric-500 to-blue-600",
     iconBg: "bg-emerald-50 text-emerald-600",
   },
   INTERESTED: {
     label: "Qiziqish bildirganlar",
     icon: Star,
-    active: "from-blue-500 to-electric-500",
+    active: "from-electric-500 to-blue-600",
     iconBg: "bg-blue-50 text-blue-600",
   },
   COMPLAINT: {
     label: "Shikoyatlar",
     icon: ShieldAlert,
-    active: "from-rose-500 to-red-500",
+    active: "from-electric-500 to-blue-600",
     iconBg: "bg-rose-50 text-rose-600",
   },
   SUGGESTION: {
     label: "Takliflar",
     icon: Lightbulb,
-    active: "from-amber-400 to-orange-500",
+    active: "from-electric-500 to-blue-600",
     iconBg: "bg-amber-50 text-amber-600",
   },
 };
@@ -132,7 +147,8 @@ function initials(name: string) {
 
 export default function RequestsPage() {
   const router = useRouter();
-  const [requests, setRequests] = useState<ApiRequest[]>([]);
+  const [people, setPeople] = useState<PersonGroup[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [summary, setSummary] = useState<RequestSummary | null>(null);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [category, setCategory] = useState<RequestCategory | null>("LEAD");
@@ -171,7 +187,7 @@ export default function RequestsPage() {
         return;
       }
       if (!response.ok) throw new Error(data.error || "Arizalar yuklanmadi");
-      setRequests(data.requests ?? []);
+      setPeople(data.people ?? []);
       setSummary(data.summary ?? null);
       setPagination(data.pagination ?? null);
       setError("");
@@ -220,13 +236,10 @@ export default function RequestsPage() {
   }
 
   async function updateStatus(id: string, nextStatus: RequestStatus) {
-    const previous = requests.find((item) => item.id === id)?.status;
-    if (!previous || previous === nextStatus) return;
+    const request = people.flatMap((person) => person.requests).find((item) => item.id === id);
+    if (!request || request.status === nextStatus) return;
 
     setUpdatingId(id);
-    setRequests((items) =>
-      items.map((item) => (item.id === id ? { ...item, status: nextStatus } : item)),
-    );
     try {
       const response = await fetch("/api/requests/" + id, {
         method: "PATCH",
@@ -237,9 +250,6 @@ export default function RequestsPage() {
       if (!response.ok) throw new Error(data.error || "Holat saqlanmadi");
       await load();
     } catch (updateError) {
-      setRequests((items) =>
-        items.map((item) => (item.id === id ? { ...item, status: previous } : item)),
-      );
       setError(updateError instanceof Error ? updateError.message : "Holat saqlanmadi");
     } finally {
       setUpdatingId(null);
@@ -389,7 +399,7 @@ export default function RequestsPage() {
         )}
 
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 text-xs text-slate-400 sm:px-5">
-          <span>{pagination?.total ?? 0} ta ariza topildi</span>
+          <span>{pagination?.total ?? 0} ta kontakt topildi</span>
           <span className="flex items-center gap-1.5">
             <Phone className="h-3.5 w-3.5 text-electric-500" /> {summary?.withPhone ?? 0} ta telefonli
           </span>
@@ -399,7 +409,7 @@ export default function RequestsPage() {
           <div className="flex min-h-80 items-center justify-center gap-2 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" /> Arizalar yuklanmoqda...
           </div>
-        ) : requests.length === 0 ? (
+        ) : people.length === 0 ? (
           <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50">
               <MessageCircle className="h-6 w-6 text-slate-300" />
@@ -411,52 +421,158 @@ export default function RequestsPage() {
           </div>
         ) : (
           <div className="divide-y divide-line">
-            {requests.map((request) => {
-              const name = request.conversation?.contactName || request.name || "Noma'lum";
-              const channelName = channelLabels[request.conversation?.channel.type ?? ""] ?? "Kanal";
-              const activeMeta = categoryMeta[request.category];
+            {people.map((person) => {
+              const primaryCategory = person.categories[0] ?? "LEAD";
+              const primaryMeta = categoryMeta[primaryCategory];
+              const channelName = channelLabels[person.channel?.type ?? ""] ?? "Kanal";
+              const statusClass =
+                person.status === "DONE"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : person.status === "IN_PROGRESS"
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-blue-50 text-blue-700";
+
               return (
-                <div key={request.id} className="flex flex-col gap-3 px-4 py-4 transition hover:bg-[#fafbff] sm:flex-row sm:items-start sm:px-5">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div key={person.id} className="transition hover:bg-[#fafbff]">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId((value) => (value === person.id ? null : person.id))}
+                    className="flex w-full flex-col gap-3 px-4 py-4 text-left sm:flex-row sm:items-start sm:px-5"
+                    aria-expanded={expandedId === person.id}
+                  >
                     <div
-                      className={"flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white " + (activeMeta.iconBg.includes("rose") ? "bg-rose-500" : activeMeta.iconBg.includes("amber") ? "bg-amber-500" : activeMeta.iconBg.includes("blue") ? "bg-blue-500" : "bg-emerald-500")}
+                      className={
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white " +
+                        (primaryMeta.iconBg.includes("rose")
+                          ? "bg-rose-500"
+                          : primaryMeta.iconBg.includes("amber")
+                            ? "bg-amber-500"
+                            : primaryMeta.iconBg.includes("blue")
+                              ? "bg-blue-500"
+                              : "bg-emerald-500")
+                      }
                     >
-                      {initials(name)}
+                      {initials(person.name)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate text-sm font-bold text-navy-900">{name}</span>
+                        <span className="truncate text-sm font-bold text-navy-900">{person.name}</span>
                         <span className="text-[11px] text-slate-400">{channelName} orqali</span>
-                        <span className={"rounded-full px-2 py-0.5 text-[10px] font-bold " + (request.category === "LEAD" ? "bg-emerald-50 text-emerald-700" : request.category === "COMPLAINT" ? "bg-rose-50 text-rose-600" : request.category === "SUGGESTION" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700")}>
-                          {activeMeta.label}
-                        </span>
+                        {person.categories.map((item) => (
+                          <span
+                            key={item}
+                            className={
+                              "rounded-full px-2 py-0.5 text-[10px] font-bold " +
+                              (item === "LEAD"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : item === "COMPLAINT"
+                                  ? "bg-rose-50 text-rose-600"
+                                  : item === "SUGGESTION"
+                                    ? "bg-amber-50 text-amber-700"
+                                    : "bg-blue-50 text-blue-700")
+                            }
+                          >
+                            {categoryMeta[item].label}
+                          </span>
+                        ))}
                       </div>
-                      <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-slate-500">{request.text}</p>
+                      <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-slate-500">
+                        {person.requests[0]?.text}
+                      </p>
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-                        {request.phone && (
-                          <a href={"tel:" + request.phone} className="flex items-center gap-1.5 font-bold text-electric-600 hover:underline">
-                            <Phone className="h-3 w-3" /> {request.phone}
-                          </a>
+                        {person.phones[0] && (
+                          <span className="flex items-center gap-1.5 font-bold text-electric-600">
+                            <Phone className="h-3 w-3" /> {person.phones[0]}
+                          </span>
                         )}
-                        {request.conversation?.contactHandle && <span>{request.conversation.contactHandle}</span>}
-                        <span>{formatDate(request.createdAt)}</span>
+                        {person.contactHandle && <span>{person.contactHandle}</span>}
+                        <span>{person.requestCount} ta yozuv</span>
+                        <span>{formatDate(person.latestAt)}</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 sm:shrink-0">
-                    {request.status === "DONE" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                    <select
-                      value={request.status}
-                      disabled={updatingId === request.id}
-                      onChange={(event) => void updateStatus(request.id, event.target.value as RequestStatus)}
-                      className="rounded-lg border border-line bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 outline-none disabled:opacity-50"
-                      aria-label={name + " arizasi holati"}
-                    >
-                      <option value="NEW">Yangi</option>
-                      <option value="IN_PROGRESS">Jarayonda</option>
-                      <option value="DONE">Yakunlangan</option>
-                    </select>
-                  </div>
+                    <div className="flex shrink-0 items-center justify-between gap-3 sm:pt-1">
+                      <span className={"rounded-full px-2.5 py-1 text-[11px] font-bold " + statusClass}>
+                        {statusLabels[person.status]}
+                      </span>
+                      <ChevronDown
+                        className={"h-4 w-4 text-slate-400 transition-transform " + (expandedId === person.id ? "rotate-180" : "")}
+                      />
+                    </div>
+                  </button>
+
+                  {expandedId === person.id && (
+                    <div className="border-t border-line bg-slate-50/70 px-4 py-4 sm:px-5">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+                            Barcha lead yozuvlari
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            Shu kontaktga tegishli {person.requestCount} ta yozuv ko&apos;rsatilmoqda.
+                          </p>
+                        </div>
+                        {person.phones.length > 1 && (
+                          <span className="text-xs text-slate-400">{person.phones.length} ta telefon</span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {person.requests.map((request) => {
+                          const detailMeta = categoryMeta[request.category];
+                          return (
+                            <div
+                              key={request.id}
+                              className="flex flex-col gap-3 rounded-xl border border-line bg-white px-3.5 py-3 sm:flex-row sm:items-start sm:justify-between"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={
+                                      "rounded-full px-2 py-0.5 text-[10px] font-bold " +
+                                      (request.category === "LEAD"
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : request.category === "COMPLAINT"
+                                          ? "bg-rose-50 text-rose-600"
+                                          : request.category === "SUGGESTION"
+                                            ? "bg-amber-50 text-amber-700"
+                                            : "bg-blue-50 text-blue-700")
+                                    }
+                                  >
+                                    {detailMeta.label}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400">{formatDate(request.createdAt)}</span>
+                                  {request.isDuplicate && (
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                      Tarix
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-2 text-[13px] leading-5 text-slate-600">{request.text}</p>
+                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+                                  {request.phone && (
+                                    <a href={"tel:" + request.phone} className="flex items-center gap-1 font-bold text-electric-600 hover:underline">
+                                      <Phone className="h-3 w-3" /> {request.phone}
+                                    </a>
+                                  )}
+                                  <span>{statusLabels[request.status]}</span>
+                                </div>
+                              </div>
+                              <select
+                                value={request.status}
+                                disabled={request.isDuplicate || updatingId === request.id}
+                                onChange={(event) => void updateStatus(request.id, event.target.value as RequestStatus)}
+                                className="rounded-lg border border-line bg-white px-2.5 py-2 text-xs font-semibold text-slate-600 outline-none disabled:opacity-50"
+                                aria-label={person.name + " yozuvi holati"}
+                              >
+                                <option value="NEW">Yangi</option>
+                                <option value="IN_PROGRESS">Jarayonda</option>
+                                <option value="DONE">Yakunlangan</option>
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

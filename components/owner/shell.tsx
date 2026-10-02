@@ -60,7 +60,7 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
 
           <button className="relative hidden sm:flex w-9 h-9 rounded-xl hover:bg-white/5 items-center justify-center text-slate-400">
             <Bell className="w-4.5 h-4.5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-electric-400" />
           </button>
           <SessionMenu avatarClassName="bg-white/10 text-white" />
         </div>
@@ -76,18 +76,18 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
                 key={t.href}
                 href={t.href}
                 className={`relative flex items-center gap-1.5 px-3.5 py-3 text-[13px] font-medium whitespace-nowrap transition-colors ${
-                  active ? "text-cyan-300" : "text-slate-400 hover:text-white"
+                  active ? "text-electric-300" : "text-slate-400 hover:text-white"
                 }`}
               >
                 <t.icon className="w-4 h-4 shrink-0" />
                 <span>{t.label}</span>
                 {t.href === "/owner/leads" && newLeadsCount > 0 && (
-                  <span className="w-4.5 h-4.5 rounded-full bg-cyan-400 text-navy-900 text-[9px] font-bold flex items-center justify-center">
+                  <span className="w-4.5 h-4.5 rounded-full bg-electric-400 text-navy-900 text-[9px] font-bold flex items-center justify-center">
                     {newLeadsCount}
                   </span>
                 )}
                 {active && (
-                  <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-cyan-400" />
+                  <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-electric-400" />
                 )}
               </Link>
             );

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@/lib/generated/prisma";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { normalizePhoneForSearch } from "@/lib/phone";
 
 const CATEGORIES = ["LEAD", "INTERESTED", "COMPLAINT", "SUGGESTION"] as const;
 const STATUSES = ["NEW", "IN_PROGRESS", "DONE"] as const;
@@ -63,10 +64,14 @@ function scopedWhere(
   if (params.status) and.push({ status: params.status });
 
   if (params.query) {
+    const normalizedPhoneQuery = normalizePhoneForSearch(params.query);
     and.push({
       OR: [
         { name: { contains: params.query, mode: "insensitive" } },
         { phone: { contains: params.query, mode: "insensitive" } },
+        ...(normalizedPhoneQuery.length >= 7
+          ? [{ phoneSearch: { equals: normalizedPhoneQuery } }]
+          : []),
         { text: { contains: params.query, mode: "insensitive" } },
         {
           conversation: {
@@ -117,36 +122,16 @@ export async function GET(req: Request) {
   const pageSize = Number.isFinite(requestedPageSize)
     ? Math.min(50, Math.max(10, Math.trunc(requestedPageSize)))
     : 25;
+  const pageNumber = Math.max(1, Math.trunc(requestedPage) || 1);
   const fullWhere = scopedWhere(session.clientId, { category, status, channel, query, from, to });
   const summaryWhere = scopedWhere(session.clientId, { channel, from, to });
 
-  const [requests, total, categoryCounts, statusCounts, phoneCount] = await Promise.all([
+  const [matchingRequests, categoryCounts, statusCounts, phoneCount] = await Promise.all([
     prisma.request.findMany({
       where: fullWhere,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      skip: Math.max(0, requestedPage - 1) * pageSize,
-      take: pageSize,
-      select: {
-        id: true,
-        category: true,
-        name: true,
-        phone: true,
-        text: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        conversation: {
-          select: {
-            id: true,
-            contactId: true,
-            contactName: true,
-            contactHandle: true,
-            channel: { select: { type: true, handle: true } },
-          },
-        },
-      },
+      select: { id: true, conversationId: true },
     }),
-    prisma.request.count({ where: fullWhere }),
     Promise.all(
       CATEGORIES.map((item) =>
         prisma.request.count({ where: { ...summaryWhere, category: item } }),
@@ -162,10 +147,117 @@ export async function GET(req: Request) {
     }),
   ]);
 
+  const groupKeys: string[] = [];
+  const seenGroupKeys = new Set<string>();
+  for (const request of matchingRequests) {
+    const key = request.conversationId ?? "request:" + request.id;
+    if (!seenGroupKeys.has(key)) {
+      seenGroupKeys.add(key);
+      groupKeys.push(key);
+    }
+  }
+
+  const pageGroupKeys = groupKeys.slice(
+    (pageNumber - 1) * pageSize,
+    pageNumber * pageSize,
+  );
+  const conversationIds = pageGroupKeys.filter((key) => !key.startsWith("request:"));
+  const standaloneRequestIds = pageGroupKeys
+    .filter((key) => key.startsWith("request:"))
+    .map((key) => key.slice("request:".length));
+
+  const details = pageGroupKeys.length
+    ? await prisma.request.findMany({
+        where: {
+          clientId: session.clientId,
+          OR: [
+            ...(conversationIds.length ? [{ conversationId: { in: conversationIds } }] : []),
+            ...(standaloneRequestIds.length ? [{ id: { in: standaloneRequestIds } }] : []),
+          ],
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          conversationId: true,
+          isDuplicate: true,
+          category: true,
+          name: true,
+          phone: true,
+          text: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          conversation: {
+            select: {
+              id: true,
+              contactId: true,
+              contactName: true,
+              contactHandle: true,
+              channel: { select: { type: true, handle: true } },
+            },
+          },
+        },
+      })
+    : [];
+
+  type RequestDetail = (typeof details)[number];
+  type PersonGroup = {
+    id: string;
+    conversationId: string | null;
+    name: string;
+    contactHandle: string | null;
+    channel: { type: string; handle: string | null } | null;
+    phones: string[];
+    categories: Category[];
+    status: Status;
+    latestAt: Date;
+    requestCount: number;
+    requests: RequestDetail[];
+  };
+
+  const people = new Map<string, PersonGroup>();
+  const statusRank: Record<Status, number> = { DONE: 0, NEW: 1, IN_PROGRESS: 2 };
+
+  for (const request of details) {
+    const key = request.conversationId ?? "request:" + request.id;
+    const existing = people.get(key);
+    if (existing) {
+      existing.requests.push(request);
+      if (request.phone && !existing.phones.includes(request.phone)) {
+        existing.phones.push(request.phone);
+      }
+      if (!existing.categories.includes(request.category)) {
+        existing.categories.push(request.category);
+      }
+      if (statusRank[request.status] > statusRank[existing.status]) {
+        existing.status = request.status;
+      }
+      continue;
+    }
+
+    people.set(key, {
+      id: key,
+      conversationId: request.conversationId,
+      name: request.conversation?.contactName || request.name || "Noma'lum",
+      contactHandle: request.conversation?.contactHandle ?? null,
+      channel: request.conversation?.channel ?? null,
+      phones: request.phone ? [request.phone] : [],
+      categories: [request.category],
+      status: request.status,
+      latestAt: request.createdAt,
+      requestCount: 1,
+      requests: [request],
+    });
+  }
+
+  for (const person of people.values()) {
+    person.requestCount = person.requests.length;
+  }
+
   const categoryOffset = 0;
   const statusOffset = 0;
   return NextResponse.json({
-    requests,
+    people: pageGroupKeys.map((key) => people.get(key)).filter(Boolean),
     summary: {
       total: categoryCounts.reduce((sum, count) => sum + count, 0),
       leads: categoryCounts[categoryOffset],
@@ -180,10 +272,10 @@ export async function GET(req: Request) {
       },
     },
     pagination: {
-      page: Math.max(1, Math.trunc(requestedPage) || 1),
+      page: pageNumber,
       pageSize,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      total: groupKeys.length,
+      totalPages: Math.max(1, Math.ceil(groupKeys.length / pageSize)),
     },
   });
 }

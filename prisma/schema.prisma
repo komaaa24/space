@@ -401,6 +401,7 @@ model Request {
   category    RequestCategory
   name        String
   phone       String?
+  phoneSearch String?
   text        String
   status      RequestStatus   @default(NEW)
   createdAt   DateTime        @default(now())
@@ -415,6 +416,7 @@ model Request {
 
   @@index([clientId, createdAt])
   @@index([clientId, isDuplicate, createdAt])
+  @@index([clientId, phoneSearch])
 }
 
 enum AutomationRunStatus {

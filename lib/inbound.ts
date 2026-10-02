@@ -8,6 +8,7 @@ import {
 } from "@/lib/ai";
 import { isWithinWorkHours } from "@/lib/work-hours";
 import { canSendAiMessage, canUseFeature } from "@/lib/access-control";
+import { normalizePhoneForSearch } from "@/lib/phone";
 
 interface IncomingMessageParams {
   channelId: string;
@@ -163,6 +164,7 @@ export async function handleIncomingMessage({
           data: {
             name: fromName || existing.name,
             phone: classification.phone ?? existing.phone,
+            phoneSearch: normalizePhoneForSearch(classification.phone ?? existing.phone) || null,
             text,
           },
         });
@@ -175,6 +177,7 @@ export async function handleIncomingMessage({
               category: classification.category,
               name: fromName || "Noma'lum",
               phone: classification.phone,
+              phoneSearch: normalizePhoneForSearch(classification.phone) || null,
               text,
             },
           });
@@ -195,6 +198,7 @@ export async function handleIncomingMessage({
             data: {
               name: fromName || raced.name,
               phone: classification.phone ?? raced.phone,
+              phoneSearch: normalizePhoneForSearch(classification.phone ?? raced.phone) || null,
               text,
             },
           });
