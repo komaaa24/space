@@ -12,6 +12,9 @@ import {
   ChevronLeft,
   Zap,
   Workflow,
+  Smartphone,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 import { Badge, PageTitle, PrimaryButton, inputCls } from "@/components/ui";
 
@@ -107,6 +110,149 @@ const emptyForm = {
   followUpMinutes: 60,
   followUpMessage: "",
 };
+
+function AutomationPhonePreview({
+  form,
+  kind,
+  channelName,
+}: {
+  form: typeof emptyForm;
+  kind: AutomationKind;
+  channelName: string;
+}) {
+  const keyword = form.matchAny
+    ? "Salom"
+    : form.keywords.split(",")[0]?.trim() || "narx";
+  const triggerType = form.triggerOnComment && !form.triggerOnDm ? "Komment" : "DM";
+  const leadFlow = kind === "LEAD_FLOW";
+  const messages = leadFlow
+    ? [
+        {
+          role: "user",
+          text: keyword,
+        },
+        {
+          role: "bot",
+          text: form.welcomeMessage.trim() || "Salom! Siz uchun foydali ma'lumot tayyorladik.",
+          button: form.welcomeButtonLabel.trim() || "Olish",
+        },
+        ...(form.checkSubscription
+          ? [
+              {
+                role: "system",
+                text: "Obuna tekshiriladi. Tayyor bo'lgach keyingi xabar yuboriladi.",
+              },
+              {
+                role: "bot",
+                text:
+                  form.notSubscribedMessage.trim() ||
+                  "Avval kanalga obuna bo'ling, keyin davom etamiz.",
+                button: form.notSubscribedButtonLabel.trim() || "✅ Tayyor",
+              },
+            ]
+          : []),
+        {
+          role: "bot",
+          text:
+            form.deliveredMessage.trim() ||
+            "Tayyor! Kerakli materialni shu yerdan olishingiz mumkin.",
+          button: form.deliveredButtonLabel.trim() || "Havolani ko'rish",
+        },
+      ]
+    : [
+        { role: "user", text: keyword },
+        {
+          role: "bot",
+          text: form.replyMessage.trim() || "Avtomatik javob shu yerda ko'rinadi.",
+        },
+      ];
+
+  return (
+    <div className="flex w-full flex-col items-center gap-4">
+      <div className="flex items-center gap-2 self-start">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-electric-50 text-electric-600">
+          <Smartphone className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-sm font-extrabold text-navy-900">Jonli preview</p>
+          <p className="text-[11px] text-slate-400">Mijoz ko&apos;radigan oqim</p>
+        </div>
+      </div>
+
+      <div className="w-[282px] overflow-hidden rounded-[34px] border-[7px] border-slate-900 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.22)]">
+        <div className="flex h-6 items-center justify-between bg-slate-900 px-4 text-[9px] font-bold text-white">
+          <span>9:41</span>
+          <span>● ● ●</span>
+        </div>
+        <div className="flex items-center gap-2 border-b border-line bg-white px-3 py-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 via-rose-500 to-amber-400 text-white">
+            <MessageCircle className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-extrabold text-slate-900">
+              {channelName || "@business"}
+            </p>
+            <p className="text-[9px] text-emerald-500">Online</p>
+          </div>
+        </div>
+        <div className="min-h-[510px] space-y-3 bg-[#f4f6fb] p-3">
+          <div className="rounded-xl border border-electric-100 bg-electric-50 px-3 py-2 text-[10px] leading-4 text-electric-800">
+            <div className="mb-1 flex items-center gap-1 font-extrabold">
+              <Sparkles className="h-3 w-3" /> Trigger: {triggerType}
+            </div>
+            <span>Kalit so&apos;z: {keyword}</span>
+          </div>
+
+          {messages.map((message, index) =>
+            message.role === "user" ? (
+              <div key={index} className="flex justify-end">
+                <div className="max-w-[82%] rounded-2xl rounded-br-md bg-electric-500 px-3 py-2 text-[11px] leading-4 text-white shadow-sm">
+                  {message.text}
+                  <div className="mt-1 text-right text-[8px] text-electric-100">Hozirgina</div>
+                </div>
+              </div>
+            ) : message.role === "system" ? (
+              <div key={index} className="ml-8 rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-2 text-[10px] text-slate-500">
+                {message.text}
+              </div>
+            ) : (
+              <div key={index} className="flex items-start gap-2">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-electric-100 text-electric-600">
+                  <Bot className="h-3.5 w-3.5" />
+                </div>
+                <div className="max-w-[82%] rounded-2xl rounded-tl-md bg-white px-3 py-2 text-[11px] leading-4 text-slate-700 shadow-sm">
+                  {message.text}
+                  {message.button && (
+                    <button
+                      type="button"
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-electric-500 px-2 py-1.5 text-[10px] font-bold text-white"
+                    >
+                      {message.button}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ),
+          )}
+        </div>
+        <div className="border-t border-line bg-white px-3 py-2">
+          <div className="rounded-full bg-slate-100 px-3 py-2 text-[10px] text-slate-400">
+            Xabar yozish...
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-1.5">
+        <span className="rounded-full bg-electric-50 px-2.5 py-1 text-[10px] font-bold text-electric-700">
+          1. Trigger
+        </span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+          {leadFlow ? "2. Oqim" : "2. Javob"}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function AutomationsPage() {
   const [automations, setAutomations] = useState<AutomationDb[]>([]);
@@ -492,7 +638,7 @@ export default function AutomationsPage() {
       )}
 
       {showSimpleForm && (
-        <div className="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-sm flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-sm flex items-center justify-center gap-6 p-4 sm:p-6">
           <div className="rounded-2xl bg-white w-full max-w-md p-6 space-y-3.5">
             <div className="flex items-center justify-between">
               <h3 className="font-extrabold">
@@ -585,11 +731,18 @@ export default function AutomationsPage() {
               )}
             </PrimaryButton>
           </div>
+          <div className="hidden lg:flex w-[330px] shrink-0 items-center justify-center">
+            <AutomationPhonePreview
+              form={form}
+              kind="AUTO_REPLY"
+              channelName={channels.find((channel) => channel.id === form.channelId)?.handle ?? ""}
+            />
+          </div>
         </div>
       )}
 
       {showWizard && (
-        <div className="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-sm flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-sm flex items-center justify-center gap-6 p-4 sm:p-6">
           <div className="rounded-2xl bg-white w-full max-w-lg p-6 space-y-4 max-h-[88vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div>
@@ -961,6 +1114,13 @@ export default function AutomationsPage() {
                 </PrimaryButton>
               )}
             </div>
+          </div>
+          <div className="hidden lg:flex w-[330px] shrink-0 items-center justify-center">
+            <AutomationPhonePreview
+              form={form}
+              kind="LEAD_FLOW"
+              channelName={channels.find((channel) => channel.id === form.channelId)?.handle ?? ""}
+            />
           </div>
         </div>
       )}
