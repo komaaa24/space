@@ -111,6 +111,7 @@ const emptyForm = {
   followUpMessage: "",
 };
 
+
 function AutomationPhonePreview({
   form,
   kind,
@@ -120,17 +121,21 @@ function AutomationPhonePreview({
   kind: AutomationKind;
   channelName: string;
 }) {
+  type PreviewMessage = {
+    role: "user" | "bot" | "system";
+    text: string;
+    button?: string;
+  };
+
   const keyword = form.matchAny
     ? "Salom"
     : form.keywords.split(",")[0]?.trim() || "narx";
   const triggerType = form.triggerOnComment && !form.triggerOnDm ? "Komment" : "DM";
   const leadFlow = kind === "LEAD_FLOW";
-  const messages = leadFlow
+
+  const messages: PreviewMessage[] = leadFlow
     ? [
-        {
-          role: "user",
-          text: keyword,
-        },
+        { role: "user", text: keyword },
         {
           role: "bot",
           text: form.welcomeMessage.trim() || "Salom! Siz uchun foydali ma'lumot tayyorladik.",
@@ -138,12 +143,9 @@ function AutomationPhonePreview({
         },
         ...(form.checkSubscription
           ? [
+              { role: "system" as const, text: "Obuna tekshirilmoqda..." },
               {
-                role: "system",
-                text: "Obuna tekshiriladi. Tayyor bo'lgach keyingi xabar yuboriladi.",
-              },
-              {
-                role: "bot",
+                role: "bot" as const,
                 text:
                   form.notSubscribedMessage.trim() ||
                   "Avval kanalga obuna bo'ling, keyin davom etamiz.",
@@ -168,87 +170,125 @@ function AutomationPhonePreview({
       ];
 
   return (
-    <div className="flex w-full flex-col items-center gap-4">
+    <div className="flex w-full flex-col items-center gap-3">
       <div className="flex items-center gap-2 self-start">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-electric-50 text-electric-600">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-electric-50 text-electric-600">
           <Smartphone className="h-4 w-4" />
         </div>
         <div>
           <p className="text-sm font-extrabold text-navy-900">Jonli preview</p>
-          <p className="text-[11px] text-slate-400">Mijoz ko&apos;radigan oqim</p>
+          <p className="text-[11px] text-slate-400">Mijoz ko'radigan oqim</p>
         </div>
       </div>
 
-      <div className="w-[282px] overflow-hidden rounded-[34px] border-[7px] border-slate-900 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.22)]">
-        <div className="flex h-6 items-center justify-between bg-slate-900 px-4 text-[9px] font-bold text-white">
-          <span>9:41</span>
-          <span>● ● ●</span>
-        </div>
-        <div className="flex items-center gap-2 border-b border-line bg-white px-3 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 via-rose-500 to-amber-400 text-white">
-            <MessageCircle className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-[11px] font-extrabold text-slate-900">
-              {channelName || "@business"}
-            </p>
-            <p className="text-[9px] text-emerald-500">Online</p>
-          </div>
-        </div>
-        <div className="min-h-[510px] space-y-3 bg-[#f4f6fb] p-3">
-          <div className="rounded-xl border border-electric-100 bg-electric-50 px-3 py-2 text-[10px] leading-4 text-electric-800">
-            <div className="mb-1 flex items-center gap-1 font-extrabold">
-              <Sparkles className="h-3 w-3" /> Trigger: {triggerType}
-            </div>
-            <span>Kalit so&apos;z: {keyword}</span>
-          </div>
+      <div className="relative w-[248px]">
+        <div className="absolute -left-[3px] top-[104px] h-12 w-[3px] rounded-l-full bg-slate-700" />
+        <div className="absolute -left-[3px] top-[171px] h-8 w-[3px] rounded-l-full bg-slate-700" />
+        <div className="absolute -right-[3px] top-[137px] h-14 w-[3px] rounded-r-full bg-slate-700" />
 
-          {messages.map((message, index) =>
-            message.role === "user" ? (
-              <div key={index} className="flex justify-end">
-                <div className="max-w-[82%] rounded-2xl rounded-br-md bg-electric-500 px-3 py-2 text-[11px] leading-4 text-white shadow-sm">
-                  {message.text}
-                  <div className="mt-1 text-right text-[8px] text-electric-100">Hozirgina</div>
+        <div className="relative h-[520px] rounded-[40px] border-[6px] border-slate-900 bg-slate-950 p-[3px] shadow-[0_24px_48px_rgba(15,23,42,0.28)]">
+          <div className="relative flex h-full flex-col overflow-hidden rounded-[32px] bg-[#f5f7fb]">
+            <div className="relative flex h-8 shrink-0 items-center justify-between bg-white px-4 text-[9px] font-extrabold text-slate-900">
+              <span>9:41</span>
+              <div className="absolute left-1/2 top-1.5 h-5 w-[76px] -translate-x-1/2 rounded-full bg-slate-950" />
+              <div className="flex items-center gap-1 text-[8px]">
+                <span className="tracking-[-2px]">••••</span>
+                <span className="text-[10px]">⌁</span>
+                <span className="rounded-[3px] border border-slate-900 px-1 py-[1px]">100</span>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 py-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-400 text-white">
+                <MessageCircle className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[10px] font-extrabold text-slate-900">
+                  {channelName || "@business"}
+                </p>
+                <p className="text-[8px] text-emerald-500">Online</p>
+              </div>
+              <span className="text-slate-400">•••</span>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-2.5 py-3">
+              <div className="rounded-xl border border-electric-100 bg-electric-50 px-2.5 py-2 text-[9px] leading-3.5 text-electric-800">
+                <div className="mb-1 flex items-center gap-1 font-extrabold">
+                  <Sparkles className="h-3 w-3" /> Avtojavob ishga tushdi
+                </div>
+                <div className="text-electric-700">
+                  {triggerType} orqali: <span className="font-bold">{keyword}</span>
                 </div>
               </div>
-            ) : message.role === "system" ? (
-              <div key={index} className="ml-8 rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-2 text-[10px] text-slate-500">
-                {message.text}
+
+              {messages.map((message, index) =>
+                message.role === "user" ? (
+                  <div key={index} className="flex justify-end">
+                    <div className="max-w-[80%]">
+                      <p className="mb-1 pr-1 text-right text-[8px] font-semibold text-slate-400">
+                        Mijoz savoli
+                      </p>
+                      <div className="rounded-[17px] rounded-br-md bg-electric-500 px-2.5 py-2 text-[10px] leading-3.5 text-white shadow-sm">
+                        {message.text}
+                        <div className="mt-1 text-right text-[7px] text-electric-100">
+                          Hozirgina
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : message.role === "system" ? (
+                  <div key={index} className="mx-2 rounded-xl border border-dashed border-slate-200 bg-white px-2.5 py-2 text-center text-[9px] text-slate-500">
+                    {message.text}
+                  </div>
+                ) : (
+                  <div key={index} className="flex items-start gap-1.5">
+                    <div className="mt-4 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-electric-100 text-electric-600">
+                      <Bot className="h-3 w-3" />
+                    </div>
+                    <div className="max-w-[82%]">
+                      <p className="mb-1 pl-1 text-[8px] font-semibold text-slate-400">
+                        Chatspace bot
+                      </p>
+                      <div className="rounded-[17px] rounded-tl-md bg-white px-2.5 py-2 text-[10px] leading-3.5 text-slate-700 shadow-[0_2px_8px_rgba(15,23,42,0.06)]">
+                        {message.text}
+                        {message.button && (
+                          <button
+                            type="button"
+                            className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-electric-500 px-2 py-1.5 text-[9px] font-bold text-white"
+                          >
+                            {message.button}
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
+
+            <div className="shrink-0 border-t border-slate-200 bg-white px-2.5 py-2">
+              <div className="rounded-full bg-slate-100 px-3 py-2 text-[9px] text-slate-400">
+                Xabar yozish...
               </div>
-            ) : (
-              <div key={index} className="flex items-start gap-2">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-electric-100 text-electric-600">
-                  <Bot className="h-3.5 w-3.5" />
-                </div>
-                <div className="max-w-[82%] rounded-2xl rounded-tl-md bg-white px-3 py-2 text-[11px] leading-4 text-slate-700 shadow-sm">
-                  {message.text}
-                  {message.button && (
-                    <button
-                      type="button"
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-electric-500 px-2 py-1.5 text-[10px] font-bold text-white"
-                    >
-                      {message.button}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ),
-          )}
-        </div>
-        <div className="border-t border-line bg-white px-3 py-2">
-          <div className="rounded-full bg-slate-100 px-3 py-2 text-[10px] text-slate-400">
-            Xabar yozish...
+              <div className="mx-auto mt-2 h-1 w-20 rounded-full bg-slate-900" />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="flex flex-wrap justify-center gap-1.5">
-        <span className="rounded-full bg-electric-50 px-2.5 py-1 text-[10px] font-bold text-electric-700">
-          1. Trigger
+        <span className="rounded-full bg-electric-50 px-2 py-1 text-[9px] font-bold text-electric-700">
+          1. Savol
         </span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
-          {leadFlow ? "2. Oqim" : "2. Javob"}
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500">
+          2. Javob
         </span>
+        {leadFlow && (
+          <span className="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-700">
+            3. Oqim
+          </span>
+        )}
       </div>
     </div>
   );
