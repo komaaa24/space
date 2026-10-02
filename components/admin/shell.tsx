@@ -56,6 +56,36 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [features, setFeatures] = useState<Record<FeatureKey, boolean> | null>(null);
   const [waitingCount, setWaitingCount] = useState(0);
 
+  const [notifications, setNotifications] = useState<{
+    id: string;
+    type: "LEAD" | "COMPLAINT" | "SYSTEM";
+    title: string;
+    body: string;
+    href: string | null;
+    readAt: string | null;
+    createdAt: string;
+  }[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+
+  async function loadNotifications() {
+    const response = await fetch("/api/notifications", { cache: "no-store" });
+    if (!response.ok) return;
+    const data = await response.json();
+    setNotifications(data.notifications ?? []);
+    setUnreadNotificationCount(data.unreadCount ?? 0);
+  }
+
+  async function markNotification(id?: string) {
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(id ? { id } : { all: true }),
+    });
+    await loadNotifications();
+  }
+
+
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
@@ -75,6 +105,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         setWaitingCount(count);
       })
       .catch(() => {});
+  }, []);
+
+
+  useEffect(() => {
+    void loadNotifications();
+    const timer = window.setInterval(() => void loadNotifications(), 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
   return (
@@ -119,10 +156,76 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           <SupportLink className="hidden xl:inline-flex" />
 
-          <button className="relative hidden sm:flex w-9 h-9 rounded-xl hover:bg-slate-50 items-center justify-center text-slate-400">
-            <Bell className="w-4.5 h-4.5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-electric-500" />
-          </button>
+          <div className="relative hidden sm:block">
+            <button
+              type="button"
+              onClick={() => setNotificationOpen((open) => !open)}
+              aria-label="Bildirishnomalarni ochish"
+              className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+            >
+              <Bell className="h-4.5 w-4.5" />
+              {unreadNotificationCount > 0 && (
+                <span className="absolute -right-0.5 -top-1 min-w-4 rounded-full bg-electric-500 px-1 text-[9px] font-bold leading-4 text-white">
+                  {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                </span>
+              )}
+            </button>
+
+            {notificationOpen && (
+              <div className="absolute right-0 top-11 z-50 w-[340px] overflow-hidden rounded-2xl border border-line bg-white shadow-[0_20px_50px_rgba(15,23,42,0.16)]">
+                <div className="flex items-center justify-between border-b border-line px-4 py-3">
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900">Bildirishnomalar</p>
+                    <p className="text-[11px] text-slate-400">
+                      {unreadNotificationCount ? unreadNotificationCount + " ta yangi xabar" : "Hammasi ko'rilgan"}
+                    </p>
+                  </div>
+                  {unreadNotificationCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => void markNotification()}
+                      className="text-[11px] font-bold text-electric-600 hover:text-electric-700"
+                    >
+                      Barchasini o'qilgan
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-[360px] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-5 py-10 text-center">
+                      <Bell className="mx-auto h-7 w-7 text-slate-200" />
+                      <p className="mt-2 text-sm font-semibold text-slate-500">Yangi bildirishnoma yo'q</p>
+                      <p className="mt-1 text-xs text-slate-400">Yangi lead yoki shikoyat shu yerda chiqadi.</p>
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <Link
+                        key={notification.id}
+                        href={notification.href ?? "/admin/requests"}
+                        onClick={() => void markNotification(notification.id)}
+                        className={"flex gap-3 border-b border-line px-4 py-3 transition hover:bg-slate-50 " + (notification.readAt ? "bg-white" : "bg-electric-50/40")}
+                      >
+                        <span className={"mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-extrabold " + (notification.type === "COMPLAINT" ? "bg-rose-50 text-rose-600" : notification.type === "LEAD" ? "bg-emerald-50 text-emerald-600" : "bg-electric-50 text-electric-600")}>
+                          {notification.type === "COMPLAINT" ? "!" : notification.type === "LEAD" ? "+" : "i"}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="truncate text-xs font-extrabold text-slate-800">{notification.title}</span>
+                            {!notification.readAt && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-electric-500" />}
+                          </span>
+                          <span className="mt-1 block line-clamp-2 text-[11px] leading-4 text-slate-500">{notification.body}</span>
+                          <span className="mt-1 block text-[10px] text-slate-400">
+                            {new Intl.DateTimeFormat("uz-UZ", { hour: "2-digit", minute: "2-digit" }).format(new Date(notification.createdAt))}
+                          </span>
+                        </span>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <SessionMenu avatarClassName="electric-gradient text-white" />
         </div>

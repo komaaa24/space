@@ -21,6 +21,10 @@ export async function PATCH(req: Request) {
     workHoursStart?: string;
     workHoursEnd?: string;
     afterHoursMode?: "ALWAYS" | "AUTO_REPLY" | "SILENT";
+    notifyLeadTelegram?: boolean;
+    notifyComplaintTelegram?: boolean;
+    notifyDailySummary?: boolean;
+    notifyInApp?: boolean;
   } = {};
 
   if (typeof body?.company === "string" && body.company.trim()) {
@@ -64,6 +68,15 @@ export async function PATCH(req: Request) {
   }
   if (["ALWAYS", "AUTO_REPLY", "SILENT"].includes(body?.afterHoursMode)) {
     data.afterHoursMode = body.afterHoursMode;
+  }
+
+  for (const key of [
+    "notifyLeadTelegram",
+    "notifyComplaintTelegram",
+    "notifyDailySummary",
+    "notifyInApp",
+  ] as const) {
+    if (typeof body?.[key] === "boolean") data[key] = body[key];
   }
 
   if (Object.keys(data).length === 0) {

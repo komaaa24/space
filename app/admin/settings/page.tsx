@@ -101,15 +101,28 @@ function Field({
   );
 }
 
-function Toggle({ on }: { on: boolean }) {
+function Toggle({
+  on,
+  onChange,
+  disabled = false,
+}: {
+  on: boolean;
+  onChange?: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <span
-      className={`w-11 h-6 rounded-full relative inline-block ${on ? "bg-electric-500" : "bg-slate-200"}`}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onChange}
+      disabled={disabled || !onChange}
+      className={`relative inline-block h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-electric-500" : "bg-slate-200"} ${disabled || !onChange ? "cursor-default opacity-70" : "cursor-pointer"}`}
     >
       <span
-        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow ${on ? "left-[22px]" : "left-0.5"}`}
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`}
       />
-    </span>
+    </button>
   );
 }
 
@@ -491,6 +504,13 @@ export default function SettingsPage() {
   const [afterHoursMode, setAfterHoursMode] = useState("ALWAYS");
   const [plan, setPlan] = useState("");
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+  const [notifyLeadTelegram, setNotifyLeadTelegram] = useState(true);
+  const [notifyComplaintTelegram, setNotifyComplaintTelegram] = useState(true);
+  const [notifyDailySummary, setNotifyDailySummary] = useState(false);
+  const [notifyInApp, setNotifyInApp] = useState(true);
+  const [notificationSaving, setNotificationSaving] = useState<string | null>(null);
+  const [notificationSaved, setNotificationSaved] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingAgent, setSavingAgent] = useState(false);
@@ -518,6 +538,10 @@ export default function SettingsPage() {
         setWorkHoursStart(data.user?.workHoursStart ?? "09:00");
         setWorkHoursEnd(data.user?.workHoursEnd ?? "21:00");
         setAfterHoursMode(data.user?.afterHoursMode ?? "ALWAYS");
+        setNotifyLeadTelegram(data.user?.notifyLeadTelegram ?? true);
+        setNotifyComplaintTelegram(data.user?.notifyComplaintTelegram ?? true);
+        setNotifyDailySummary(data.user?.notifyDailySummary ?? false);
+        setNotifyInApp(data.user?.notifyInApp ?? true);
         setPlan(data.user?.plan ?? "FREE");
         setLoaded(true);
       });
@@ -544,6 +568,48 @@ export default function SettingsPage() {
       setTimeout(() => setSavedField(null), 2500);
     } finally {
       setSaving(false);
+    }
+  }
+
+
+  async function saveNotification(
+    key: "notifyLeadTelegram" | "notifyComplaintTelegram" | "notifyDailySummary" | "notifyInApp",
+    value: boolean,
+  ) {
+    const setters = {
+      notifyLeadTelegram: setNotifyLeadTelegram,
+      notifyComplaintTelegram: setNotifyComplaintTelegram,
+      notifyDailySummary: setNotifyDailySummary,
+      notifyInApp: setNotifyInApp,
+    };
+    const setter = setters[key];
+    const previous = {
+      notifyLeadTelegram,
+      notifyComplaintTelegram,
+      notifyDailySummary,
+      notifyInApp,
+    }[key];
+
+    setter(value);
+    setNotificationSaving(key);
+    setNotificationSaved(null);
+    setNotificationError("");
+
+    try {
+      const response = await fetch("/api/client", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || "Sozlama saqlanmadi");
+      setNotificationSaved(key);
+      window.setTimeout(() => setNotificationSaved(null), 1800);
+    } catch (saveError) {
+      setter(previous);
+      setNotificationError(saveError instanceof Error ? saveError.message : "Sozlama saqlanmadi");
+    } finally {
+      setNotificationSaving(null);
     }
   }
 
@@ -768,21 +834,62 @@ export default function SettingsPage() {
         {active === "notifications" && (
           <SectionCard
             title="Bildirishnomalar"
-            subtitle="Tez orada — bildirishnoma yuborish tizimi keyingi bosqichda ulanadi"
+            subtitle="Yangi hodisalarni panelda yo'qotib qo'ymaslik uchun xabarnomalarni boshqaring"
           >
-            {[
-              { t: "Yangi lead kelganda Telegram'ga xabar", on: true },
-              { t: "Shikoyat kelganda darhol xabar", on: true },
-              { t: "Kunlik hisobot (har kuni 21:00)", on: false },
-            ].map((row) => (
-              <div
-                key={row.t}
-                className="flex items-center justify-between border border-line rounded-xl px-4 py-3.5 opacity-50"
-              >
-                <span className="text-sm font-medium">{row.t}</span>
-                <Toggle on={row.on} />
-              </div>
-            ))}
+            <div className="space-y-2">
+              {[
+                {
+                  key: "notifyLeadTelegram" as const,
+                  title: "Yangi lead kelganda xabar",
+                  description: "Yangi lead paydo bo'lganda notification markazida ko'rsatiladi.",
+                  value: notifyLeadTelegram,
+                },
+                {
+                  key: "notifyComplaintTelegram" as const,
+                  title: "Shikoyat kelganda darhol xabar",
+                  description: "Shikoyat yangi ariza sifatida tushganda darhol ko'rsatiladi.",
+                  value: notifyComplaintTelegram,
+                },
+                {
+                  key: "notifyDailySummary" as const,
+                  title: "Kunlik hisobot",
+                  description: "Kunlik hisobot taymeri ishga tushirilganda yuborish uchun saqlanadi.",
+                  value: notifyDailySummary,
+                },
+                {
+                  key: "notifyInApp" as const,
+                  title: "Panel bildirishnomalari",
+                  description: "Headerdagi qo'ng'iroq markazida yangi xabarlarni ko'rsatish.",
+                  value: notifyInApp,
+                },
+              ].map((row) => (
+                <div
+                  key={row.key}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-line px-4 py-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">{row.title}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-slate-400">{row.description}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {notificationSaving === row.key && (
+                      <Loader2 className="h-4 w-4 animate-spin text-electric-500" />
+                    )}
+                    {notificationSaved === row.key && (
+                      <Check className="h-4 w-4 text-emerald-500" />
+                    )}
+                    <Toggle
+                      on={row.value}
+                      disabled={notificationSaving === row.key}
+                      onChange={() => void saveNotification(row.key, !row.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            {notificationError && (
+              <p className="text-xs font-semibold text-red-600">{notificationError}</p>
+            )}
           </SectionCard>
         )}
 

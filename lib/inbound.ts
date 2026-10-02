@@ -9,6 +9,7 @@ import {
 import { isWithinWorkHours } from "@/lib/work-hours";
 import { canSendAiMessage, canUseFeature } from "@/lib/access-control";
 import { normalizePhoneForSearch } from "@/lib/phone";
+import { createNotification } from "@/lib/notifications";
 
 interface IncomingMessageParams {
   channelId: string;
@@ -158,6 +159,7 @@ export async function handleIncomingMessage({
         orderBy: { createdAt: "desc" },
       });
 
+      let createdRequest = false;
       if (existing) {
         await prisma.request.update({
           where: { id: existing.id },
@@ -181,6 +183,7 @@ export async function handleIncomingMessage({
               text,
             },
           });
+          createdRequest = true;
         } catch (createError) {
           // Ikki webhook bir vaqtda kelganda ikkinchisi mavjud arizani yangilaydi.
           const raced = await prisma.request.findFirst({
@@ -203,6 +206,18 @@ export async function handleIncomingMessage({
             },
           });
         }
+      }
+      if (
+        createdRequest &&
+        (classification.category === "LEAD" || classification.category === "COMPLAINT")
+      ) {
+        await createNotification({
+          clientId,
+          type: classification.category === "LEAD" ? "LEAD" : "COMPLAINT",
+          title: classification.category === "LEAD" ? "Yangi lead" : "Yangi shikoyat",
+          body: `${fromName || "Noma'lum mijoz"}: ${text.slice(0, 140)}`,
+          href: "/admin/requests",
+        });
       }
     }
   } catch (err) {
