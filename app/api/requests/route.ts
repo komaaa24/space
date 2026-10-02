@@ -130,7 +130,20 @@ export async function GET(req: Request) {
     prisma.request.findMany({
       where: fullWhere,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      select: { id: true, conversationId: true },
+      select: {
+        id: true,
+        conversationId: true,
+        name: true,
+        phone: true,
+        phoneSearch: true,
+        conversation: {
+          select: {
+            contactId: true,
+            contactName: true,
+            channel: { select: { type: true } },
+          },
+        },
+      },
     }),
     Promise.all(
       CATEGORIES.map((item) =>
@@ -147,13 +160,84 @@ export async function GET(req: Request) {
     }),
   ]);
 
+  type MatchingRequest = (typeof matchingRequests)[number];
+  type GroupDescriptor = {
+    key: string;
+    where: Prisma.RequestWhereInput;
+  };
+
+  function normalizedName(value: string | null | undefined) {
+    return (value ?? "").trim().toLocaleLowerCase().replace(/\s+/g, " ");
+  }
+
+  function describeGroup(request: MatchingRequest): GroupDescriptor {
+    const channelType = request.conversation?.channel?.type as Channel | undefined;
+    const channelKey = channelType ?? "UNKNOWN";
+    const contactId = request.conversation?.contactId?.trim();
+    const phoneSearch = request.phoneSearch ?? normalizePhoneForSearch(request.phone);
+    const name = request.conversation?.contactName?.trim() || request.name?.trim() || "";
+    const nameKey = normalizedName(name);
+
+    if (contactId) {
+      return {
+        key: "contact:" + channelKey + ":" + contactId,
+        where: {
+          conversation: {
+            is: {
+              contactId,
+              ...(channelType ? { channel: { is: { type: channelType } } } : {}),
+            },
+          },
+        },
+      };
+    }
+
+    if (phoneSearch) {
+      return {
+        key: "phone:" + phoneSearch,
+        where: { phoneSearch },
+      };
+    }
+
+    if (request.conversationId) {
+      return {
+        key: "conversation:" + request.conversationId,
+        where: { conversationId: request.conversationId },
+      };
+    }
+
+    if (nameKey) {
+      return {
+        key: "name:" + channelKey + ":" + nameKey,
+        where: {
+          OR: [
+            { name: { equals: name, mode: "insensitive" } },
+            {
+              conversation: {
+                is: {
+                  contactName: { equals: name, mode: "insensitive" },
+                  ...(channelType ? { channel: { is: { type: channelType } } } : {}),
+                },
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    return {
+      key: "request:" + request.id,
+      where: { id: request.id },
+    };
+  }
+
   const groupKeys: string[] = [];
-  const seenGroupKeys = new Set<string>();
+  const groupWhere = new Map<string, Prisma.RequestWhereInput>();
   for (const request of matchingRequests) {
-    const key = request.conversationId ?? "request:" + request.id;
-    if (!seenGroupKeys.has(key)) {
-      seenGroupKeys.add(key);
-      groupKeys.push(key);
+    const descriptor = describeGroup(request);
+    if (!groupWhere.has(descriptor.key)) {
+      groupKeys.push(descriptor.key);
+      groupWhere.set(descriptor.key, descriptor.where);
     }
   }
 
@@ -161,19 +245,15 @@ export async function GET(req: Request) {
     (pageNumber - 1) * pageSize,
     pageNumber * pageSize,
   );
-  const conversationIds = pageGroupKeys.filter((key) => !key.startsWith("request:"));
-  const standaloneRequestIds = pageGroupKeys
-    .filter((key) => key.startsWith("request:"))
-    .map((key) => key.slice("request:".length));
+  const detailsWhere = pageGroupKeys
+    .map((key) => groupWhere.get(key))
+    .filter((value): value is Prisma.RequestWhereInput => Boolean(value));
 
   const details = pageGroupKeys.length
     ? await prisma.request.findMany({
         where: {
           clientId: session.clientId,
-          OR: [
-            ...(conversationIds.length ? [{ conversationId: { in: conversationIds } }] : []),
-            ...(standaloneRequestIds.length ? [{ id: { in: standaloneRequestIds } }] : []),
-          ],
+          OR: detailsWhere,
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         select: {
@@ -183,6 +263,7 @@ export async function GET(req: Request) {
           category: true,
           name: true,
           phone: true,
+          phoneSearch: true,
           text: true,
           status: true,
           createdAt: true,
@@ -219,7 +300,7 @@ export async function GET(req: Request) {
   const statusRank: Record<Status, number> = { DONE: 0, NEW: 1, IN_PROGRESS: 2 };
 
   for (const request of details) {
-    const key = request.conversationId ?? "request:" + request.id;
+    const key = describeGroup(request).key;
     const existing = people.get(key);
     if (existing) {
       existing.requests.push(request);
