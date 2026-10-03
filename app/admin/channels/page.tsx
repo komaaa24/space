@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Send, Bot, Plus, X, Loader2, User, Trash2, ShieldCheck, MessageSquare, Workflow } from "lucide-react";
+import { Send, Bot, Plus, X, Loader2, User, Trash2, MessageSquare, Workflow } from "lucide-react";
 import { Badge, PageTitle, PrimaryButton, inputCls } from "@/components/ui";
 import { Instagram, Youtube } from "@/components/brand-icons";
-import { SupportLink } from "@/components/support-link";
 
 interface DbChannel {
   id: string;
@@ -119,7 +118,7 @@ export default function ChannelsPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [igError, setIgError] = useState<string | null>(null);
-  const [showInstagramNotice, setShowInstagramNotice] = useState(false);
+  const [connectingInstagram, setConnectingInstagram] = useState(false);
   const [updatingChannelId, setUpdatingChannelId] = useState<string | null>(null);
   const [aiAllowed, setAiAllowed] = useState(false);
 
@@ -151,6 +150,11 @@ export default function ChannelsPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  function connectInstagram() {
+    setConnectingInstagram(true);
+    window.location.assign("/api/channels/instagram/start");
+  }
 
   async function connect() {
     if (!token.trim()) return;
@@ -494,7 +498,8 @@ export default function ChannelsPage() {
 
           <button
             type="button"
-            onClick={() => setShowInstagramNotice(true)}
+            onClick={connectInstagram}
+            disabled={connectingInstagram}
             className="rounded-2xl bg-white border border-line hover:border-electric-300 hover:shadow-[0_8px_24px_rgba(15,94,255,0.08)] transition-all p-5 text-left group"
           >
             <div className="flex items-center justify-between">
@@ -502,7 +507,7 @@ export default function ChannelsPage() {
                 <Instagram className="w-5.5 h-5.5" style={{ color: "#E1306C" }} />
               </div>
               <span className="w-7 h-7 rounded-lg bg-[#f4f7ff] group-hover:bg-electric-500 group-hover:text-white flex items-center justify-center text-slate-400 transition-colors">
-                <Plus className="w-4 h-4" />
+                {connectingInstagram ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               </span>
             </div>
             <div className="font-bold text-sm mt-4">Instagram</div>
@@ -558,70 +563,6 @@ export default function ChannelsPage() {
                 "Ulash"
               )}
             </PrimaryButton>
-          </div>
-        </div>
-      )}
-
-      {showInstagramNotice && (
-        <div className="fixed inset-0 z-50 bg-navy-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-[0_28px_80px_rgba(11,18,38,0.24)]">
-            <div className="relative bg-gradient-to-br from-[#fff4f8] via-white to-[#eef5ff] p-6 sm:p-7">
-              <button
-                onClick={() => setShowInstagramNotice(false)}
-                className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-400 shadow-sm transition-colors hover:text-slate-700"
-                aria-label="Yopish"
-              >
-                <X className="h-4 w-4" />
-              </button>
-
-              <div className="flex items-start gap-4 pr-10">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
-                  <Instagram className="h-6 w-6" style={{ color: "#E1306C" }} />
-                </div>
-                <div>
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-electric-600 shadow-sm">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Manual ulash
-                  </div>
-                  <h3 className="mt-3 text-xl font-extrabold tracking-tight text-navy-900">
-                    Instagram ulash support orqali amalga oshiriladi
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Meta tasdiqlash jarayoni yakunlanmagani uchun Instagramni hozircha
-                    avtomatik ulash vaqtincha cheklangan. Akkauntingizni xavfsiz va
-                    to&apos;g&apos;ri ulash uchun support jamoamizga yozing.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 p-6 sm:p-7">
-              <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-                {[
-                  ["1", "Supportga yozing"],
-                  ["2", "Instagram username yuboring"],
-                  ["3", "Ulashni birga yakunlaymiz"],
-                ].map(([step, label]) => (
-                  <div key={step} className="rounded-2xl border border-line bg-[#fafbff] p-3">
-                    <div className="text-lg font-extrabold text-electric-500">{step}</div>
-                    <div className="mt-1 text-xs font-bold leading-5 text-slate-600">{label}</div>
-                  </div>
-                ))}
-              </div>
-
-              <SupportLink
-                variant="card"
-                label="Instagram ulashda yordam kerak"
-                description="Telegram supportga yozing, jamoamiz akkauntingizni ulash bo'yicha yo'l-yo'riq beradi."
-              />
-
-              <button
-                onClick={() => setShowInstagramNotice(false)}
-                className="w-full rounded-2xl border border-line py-3 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50"
-              >
-                Tushunarli
-              </button>
-            </div>
           </div>
         </div>
       )}
